@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "engagement-kernel"
+version = "0.0.0"
+description = "Portable engagement scoring and clustering kernel over a canonical columnar input contract."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "The Baltimore Banner" }]
+keywords = ["engagement", "clustering", "duckdb", "parquet", "analytics"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+]
+
+# Core runtime. Keep this list portable: a DuckDB reference engine over columnar
+# files, and nothing that ties the kernel to one cloud vendor. Vendor SDKs,
+# warehouse drivers and query services belong in the optional extras below, and
+# tests/test_packaging.py fails the build if one appears here.
+dependencies = [
+  "duckdb>=1.1.0",
+  "pandas>=2.2.0",
+  "pyarrow>=16.0.0",
+  "scikit-learn>=1.4.0",
+]
+
+[project.optional-dependencies]
+# Vendor-to-canonical loaders. Optional by design: installing the kernel must
+# never pull a cloud SDK, and the reference engine must run with none present.
+adapters-aws = ["boto3>=1.34.0"]
+dev = [
+  "pytest>=8.0.0",
+  # Pinned exactly so a local run and a CI run lint against the same rules.
+  # Bump deliberately.
+  "ruff==0.16.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/The-Baltimore-Banner/engagement-kernel"
+Repository = "https://github.com/The-Baltimore-Banner/engagement-kernel"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/engagement_kernel"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# "tools" is on the path so the leak scanner is importable by its unit tests
+# without being part of the distributed package.
+pythonpath = ["src", "tools"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "UP"]

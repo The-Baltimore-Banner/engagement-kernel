@@ -1,0 +1,19 @@
+# Gitleaks config for the CI `secret-scan` job.
+# Extends the default rules; allowlists deliberately fake fixture credentials.
+#
+# Gitleaks and tools/leak_scan.py cover different things and neither replaces the
+# other. Gitleaks looks for credential shapes -- keys, tokens, private keys --
+# across git history. The leak scan looks for this organisation's internal
+# identifiers in the current tree: cloud account ids, resource identifiers,
+# issue-tracker keys, internal hostnames, employee names.
+
+title = "engagement-kernel"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test doubles and fixture credentials are not real secrets"
+paths = [
+  '''(^|/)tests/''',
+]

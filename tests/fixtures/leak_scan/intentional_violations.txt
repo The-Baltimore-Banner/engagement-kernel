@@ -1,0 +1,13 @@
+Fixture for tools/leak_scan.py. Every identifier below is invented.
+
+This file exists so the path allowlist is not vacuous: a whole-tree scan must
+pass with this file present, and the same file scanned with --ignore-allowlist
+must report findings. If the second half of that stops being true, the first
+half stops proving anything.
+
+Invented 12-digit account id: 000000000000
+Invented resource identifier: arn:aws:iam::000000000000:role/not-a-real-role
+
+No ticket key appears here on purpose: no internal ticket key may exist anywhere
+in this tree, allowlisted or not. That rule is covered by tests/test_leak_scan.py
+and by the recorded negative controls instead.

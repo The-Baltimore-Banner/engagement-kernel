@@ -1,0 +1,52 @@
+# Data for tools/leak_scan.py. The rules live in the script; the terms live here.
+#
+# Nothing confidential belongs in this file. It will be public when the
+# repository is, so it holds only terms that are safe to publish and still
+# useful as a tripwire: infrastructure domains and a corporate mail domain, none
+# of which should ever appear in this repository's source.
+#
+# Employee names are deliberately absent from [deny].names. The names are
+# themselves the confidential data, so committing them here -- or committing
+# hashes of them, which for low-entropy human names are trivially enumerable --
+# would publish the thing the rule exists to protect. Supply them at scan time
+# from a file kept outside the tree:
+#
+#   LEAK_SCAN_DENY_FILE=~/private/engagement-kernel-deny.toml python3 tools/leak_scan.py
+#
+# That file uses the same [deny] table. A named-but-missing deny file is a hard
+# error, so the policy cannot quietly stop applying.
+
+[deny]
+# Matched case-insensitively, with alphanumeric-boundary rules: a term that
+# starts or ends with an alphanumeric will not match inside a longer word, so
+# "Mark" does not fire on "Marketing".
+hostnames = [
+  # Any cloud endpoint hostname -- database, search, object store, API gateway.
+  # This repository is cloud-agnostic by design and needs none of them.
+  "amazonaws.com",
+  # Internal issue-tracker and wiki URLs.
+  "atlassian.net",
+  # Internal DNS suffixes, including cloud-private zones.
+  ".internal",
+  # Employee mail addresses. A published role address, if maintainers ever add
+  # one, needs its own allowlist entry below rather than a change to this list.
+  "@thebaltimorebanner.com",
+]
+
+# Left empty on purpose -- see the note above. Populate this table only in an
+# out-of-tree deny file.
+names = []
+
+[[allowlist]]
+description = "Fixtures that contain intentional violations so the rules can be tested."
+paths = ['^tests/fixtures/leak_scan/']
+rules = ["*"]
+
+[[allowlist]]
+description = """
+This file is the deny list, so its own terms appear in it. Only the two deny
+rules are waived here, and only for this exact path: the cloud-account, cloud-ARN
+and ticket-key rules still apply, so this file cannot be used to smuggle one in.
+"""
+paths = ['^tools/leak_scan\.toml$']
+rules = ["deny-hostname", "deny-name"]

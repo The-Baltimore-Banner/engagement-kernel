@@ -108,9 +108,15 @@ and 28-day window is mis-bucketed for one channel, recency is off by up to a day
 weekly bins are off by up to a week, and the output looks entirely reasonable.
 
 The demo delivery carries worked examples of instants that fall on different
-calendar days -- and, for one of them, in different weeks -- depending on which
-zone is declared. See `DAY_BOUNDARY_EVENTS` in
-`src/engagement_kernel/contract/demo.py`; the test suite recomputes each one.
+calendar days -- and, for some of them, in different weeks -- depending on which
+zone is declared. There is one on **every** instant-bearing channel: reader
+events, email and community actions. That is deliberate, and it is what makes the
+examples useful rather than illustrative: a delivery with a near-midnight row on
+reader events alone cannot distinguish a consumer that converts every channel
+from one that converts the channel somebody happened to be looking at -- which is
+exactly the defect described above. See `DAY_BOUNDARY_EVENTS` in
+`src/engagement_kernel/contract/demo.py`; `tests/test_demo_dataset.py` recomputes
+every claim from the instant and fails if one has drifted.
 
 > **Open question.** Which timezone *should* define a day for a given
 > publisher, and does its editorial day match its data day?

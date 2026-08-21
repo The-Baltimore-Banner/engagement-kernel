@@ -82,6 +82,19 @@ def test_the_four_packages_exist_and_import() -> None:
         assert module.__doc__, f"engagement_kernel.{name} should say what it is for"
 
 
+def test_every_console_script_points_at_an_importable_callable() -> None:
+    """A declared command that cannot be imported installs and then fails.
+
+    Nothing else notices: importing the library does not import an entry point.
+    """
+    scripts = _load()["project"]["scripts"]
+    assert scripts, "the project declares no console scripts"
+    for name, target in scripts.items():
+        module_name, _, attribute = target.partition(":")
+        module = importlib.import_module(module_name)
+        assert callable(getattr(module, attribute, None)), f"{name} -> {target}"
+
+
 def test_ruff_and_pytest_are_configured() -> None:
     tool = _load()["tool"]
     assert tool["ruff"]["line-length"] > 0

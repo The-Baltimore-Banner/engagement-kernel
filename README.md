@@ -8,8 +8,9 @@ can be read.
 
 **This repository is pre-release. It is not published, not publicly available,
 and not yet usable.** There is no release, no package on any index, and no
-stable interface. The scaffold, packaging and CI gate are in place; the modelling
-code has not been added yet.
+stable interface. The scaffold and CI gate, the canonical input contract and its
+validator, and the daily intermediate build are in place; the modelling code --
+scoring, subscriber clustering and content personas -- has not been added yet.
 
 Nothing here should be treated as a supported dependency. Interfaces, package
 names and file layouts will change without notice until a first release is cut.
@@ -31,6 +32,35 @@ Two decisions follow from that goal:
   adapters that translate a source into the canonical contract; they are extras,
   never core dependencies. Installing the kernel pulls no cloud SDK, and
   `tests/test_packaging.py` fails the build if that ever stops being true.
+
+## What is here now
+
+```bash
+# Validate a delivery against the input contract.
+engagement-kernel-validate <delivery-dir>
+
+# Write the synthetic demo delivery.
+engagement-kernel-demo-dataset <dir>
+
+# Build the daily intermediate tables from a delivery.
+engagement-kernel-build-intermediate <delivery-dir> [--out <dir>] [--print-sql]
+```
+
+* **The input contract.** Seven tables, each with a grain, a deduplication key,
+  a stated null behaviour and a one-line definition per field, plus a validator
+  that refuses data which would produce quietly wrong numbers. Start at
+  [`docs/canonical-input-contract.md`](docs/canonical-input-contract.md); the
+  evidence that the validator actually refuses each class of bad input is in
+  [`docs/validator-negative-controls.md`](docs/validator-negative-controls.md).
+* **The daily intermediate build.** Seven daily aggregates, produced in one
+  in-process DuckDB session with no warehouse and no credentials. See
+  [`docs/intermediate-tables.md`](docs/intermediate-tables.md) for the grains and
+  for the four derivations where the obvious rewrite is wrong, and
+  [`docs/intermediate-negative-controls.md`](docs/intermediate-negative-controls.md)
+  for the captured proof that each one is caught when broken on purpose.
+* **A synthetic demo delivery** in [`examples/demo-delivery/`](examples/demo-delivery),
+  every value invented, carrying worked examples of the cases that are easy to
+  get wrong -- including an event near local midnight on every channel.
 
 ## Layout
 
@@ -59,10 +89,25 @@ pip install -e ".[dev]"
 ruff check .          # lint
 ruff format --check . # formatting
 pytest                # tests
-python3 tools/leak_scan.py   # the leak gate, see below
+python3 tools/leak_scan.py            # the leak gate, see below
+python3 tools/import_closure_check.py # portability, see below
 ```
 
 Every one of those runs in CI on every pull request.
+
+## The import-closure check
+
+`tests/test_packaging.py` asserts the *declared* dependencies stay free of cloud
+SDKs. That is necessary and not sufficient: a module can import a vendor library
+that happens to be installed for some other reason, and every check still passes
+on the machine where it is installed.
+
+So `tools/import_closure_check.py` does the opposite. It blocks every vendor
+import by name, then imports every module in the package, resolves every declared
+console script, and runs the whole intermediate build over the demo delivery. It
+runs as its own CI job, installed from the **core** dependencies only -- the test
+extra could pull a transitive vendor library and satisfy exactly the import the
+check exists to refuse.
 
 ## The leak scan
 

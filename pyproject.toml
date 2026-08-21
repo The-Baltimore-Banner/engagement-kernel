@@ -44,6 +44,8 @@ dev = [
 
 [project.scripts]
 engagement-kernel-validate = "engagement_kernel.contract.validate:main"
+engagement-kernel-demo-dataset = "engagement_kernel.contract.demo:main"
+engagement-kernel-build-intermediate = "engagement_kernel.intermediate.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/The-Baltimore-Banner/engagement-kernel"

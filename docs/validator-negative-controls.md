@@ -39,8 +39,8 @@ PASS  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -67,8 +67,8 @@ PASS  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -94,8 +94,8 @@ PASS  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -121,8 +121,8 @@ PASS  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -151,8 +151,8 @@ PASS  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 2 finding(s)
 $ echo $?  ->  1
@@ -181,8 +181,8 @@ PASS  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 2 finding(s)
 $ echo $?  ->  1
@@ -211,8 +211,8 @@ FAIL  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 2 finding(s)
 $ echo $?  ->  1
@@ -239,8 +239,8 @@ PASS  content              10 rows
 PASS  subscription_span    16 rows
 FAIL  email_click          7 rows
         DISJOINT_READER_ID_SPACE email_click column=reader_id rows=7: not one of the 7 reader id(s) in this table appears in the reader registry. This input is keyed on a different id space, so joining it to reading activity would produce readers who look single-channel because the join missed
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -269,8 +269,8 @@ FAIL  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -296,8 +296,8 @@ FAIL  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -324,8 +324,8 @@ FAIL  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -351,8 +351,8 @@ FAIL  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -379,8 +379,8 @@ FAIL  reader_event         27 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -406,8 +406,8 @@ FAIL  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -434,8 +434,8 @@ FAIL  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -461,8 +461,8 @@ FAIL  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -489,8 +489,8 @@ FAIL  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -517,8 +517,8 @@ FAIL  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -545,8 +545,8 @@ FAIL  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -573,8 +573,8 @@ FAIL  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -602,8 +602,8 @@ FAIL  content              10 rows
         MISSING_REQUIRED_COLUMN content column=sections rows=10: the contract requires column 'sections' and the file does not have it; columns present: ['content_id', 'content_type', 'published_ts', 'section_resolution']
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -630,8 +630,8 @@ FAIL  content              10 rows
         COLUMN_TYPE_MISMATCH content column=sections rows=10: column 'sections' is string, the contract declares list<item: string>. The value is not coerced: coercing is how a label becomes a number and a date becomes nothing
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -657,8 +657,8 @@ FAIL  content              10 rows
         NULL_IN_NON_NULLABLE content column=content_type rows=1: column 'content_type' is declared non-nullable and holds 1 null value(s)
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -684,8 +684,8 @@ FAIL  content              11 rows
         DUPLICATE_DEDUP_KEY content column=content_id rows=2: the deduplication key (content_id) is not unique: 1 key value(s) cover 2 row(s). A duplicate on this key double-counts every measure derived from the table
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -712,8 +712,8 @@ FAIL  content              10 rows
         ENUM_VALUE_OUT_OF_RANGE content column=section_resolution rows=1: column 'section_resolution' holds 1 row(s) whose value is outside the contract vocabulary. Permitted: ['resolved', 'unresolved']. Found: ['partial']
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -740,8 +740,8 @@ FAIL  content              10 rows
         DUPLICATE_SECTION content column=sections rows=1: 1 row(s) repeat a section. A view of content in n sections contributes 1/n to each, so a repeated section inflates that content's own share and breaks the reconciliation to total views
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -767,8 +767,8 @@ FAIL  content              10 rows
         CONDITIONAL_FIELD_REQUIRED content column=sections rows=1: rule 'resolved_requires_sections': 1 row(s) with section_resolution in ['resolved'] have no sections. Content declared resolved must name at least one section.
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -795,8 +795,8 @@ FAIL  content              10 rows
         CONDITIONAL_FIELD_FORBIDDEN content column=sections rows=1: rule 'unresolved_forbids_sections': 1 row(s) with section_resolution in ['unresolved'] carry a sections they must not. Content declared unresolved must not also carry sections; one of the two statements would be false.
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -825,8 +825,8 @@ PASS  content              10 rows
 FAIL  subscription_span    16 rows
         MISSING_REQUIRED_COLUMN subscription_span column=payer_type rows=16: the contract requires column 'payer_type' and the file does not have it; columns present: ['end_ts', 'reader_id', 'start_ts', 'state']
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -853,8 +853,8 @@ PASS  content              10 rows
 FAIL  subscription_span    16 rows
         COLUMN_TYPE_MISMATCH subscription_span column=start_ts rows=16: column 'start_ts' is string, the contract declares timestamp[us, tz=UTC]. The value is not coerced: coercing is how a label becomes a number and a date becomes nothing
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -880,8 +880,8 @@ PASS  content              10 rows
 FAIL  subscription_span    16 rows
         NULL_IN_NON_NULLABLE subscription_span column=state rows=1: column 'state' is declared non-nullable and holds 1 null value(s)
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -910,8 +910,8 @@ FAIL  subscription_span    17 rows
         DUPLICATE_DEDUP_KEY subscription_span column=reader_id, start_ts rows=2: the deduplication key (reader_id, start_ts) is not unique: 1 key value(s) cover 2 row(s). A duplicate on this key double-counts every measure derived from the table
         OVERLAPPING_SPANS subscription_span column=start_ts, end_ts rows=1: 1 span pair(s) overlap for the same reader. A reader has one state at a time, and overlapping spans make status as of a date ambiguous
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 2 finding(s)
 $ echo $?  ->  1
@@ -938,8 +938,8 @@ PASS  content              10 rows
 FAIL  subscription_span    16 rows
         ENUM_VALUE_OUT_OF_RANGE subscription_span column=state rows=1: column 'state' holds 1 row(s) whose value is outside the contract vocabulary. Permitted: ['registered_unpaid', 'trial', 'active', 'grace', 'payment_failed', 'cancelled', 'expired']. Found: ['churned']
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -965,8 +965,8 @@ PASS  content              10 rows
 FAIL  subscription_span    16 rows
         SPAN_END_NOT_AFTER_START subscription_span column=end_ts rows=1: 1 span(s) end at or before they start. Intervals are half-open [start_ts, end_ts), so end_ts must be strictly later
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -995,8 +995,8 @@ FAIL  subscription_span    16 rows
         OVERLAPPING_SPANS subscription_span column=start_ts, end_ts rows=1: 1 span pair(s) overlap for the same reader. A reader has one state at a time, and overlapping spans make status as of a date ambiguous
         MULTIPLE_OPEN_SPANS subscription_span column=end_ts rows=2: 2 open span(s) share a reader. At most one span per reader may have a null end_ts
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 2 finding(s)
 $ echo $?  ->  1
@@ -1025,8 +1025,8 @@ PASS  content              10 rows
 PASS  subscription_span    16 rows
 FAIL  email_click          7 rows
         EVENT_BEFORE_AVAILABILITY_FLOOR email_click column=event_ts rows=1: 1 row(s) fall before the declared availability floor 2025-11-01 (America/New_York). Either the floor is wrong or the rows are, and the difference decides whether a pre-launch period is a gap or a real zero
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -1050,7 +1050,7 @@ PASS  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
+PASS  email_open           7 rows
 FAIL  community_action     None rows
         FILE_PRESENT_BUT_DECLARED_ABSENT community_action: the file is in the delivery but the manifest declares this input 'not_deployed'. The two statements cannot both be true, and the manifest is what the engine plans against
 
@@ -1077,8 +1077,8 @@ PASS  content              10 rows
 PASS  subscription_span    16 rows
 FAIL  email_click          absent
         FILE_ABSENT_BUT_DECLARED_AVAILABLE email_click: the manifest declares this optional input 'available' but the file is not in the delivery. An input declared available and then missing would be read as zero activity rather than as an absent input
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1
@@ -1102,8 +1102,8 @@ FAIL  reader_event         absent
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
-PASS  email_open           6 rows
-PASS  community_action     6 rows
+PASS  email_open           7 rows
+PASS  community_action     7 rows
 
 FAIL: 1 finding(s)
 $ echo $?  ->  1

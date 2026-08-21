@@ -28,8 +28,28 @@ def test_workflow_runs_on_pull_requests() -> None:
 
 def test_workflow_runs_every_required_check() -> None:
     text = _text()
-    for fragment in ("ruff check", "pytest", "gitleaks", "tools/leak_scan.py"):
+    for fragment in (
+        "ruff check",
+        "pytest",
+        "gitleaks",
+        "tools/leak_scan.py",
+        "tools/import_closure_check.py",
+    ):
         assert fragment in text, f"CI no longer runs: {fragment}"
+
+
+def test_the_import_closure_job_installs_the_core_dependencies_only() -> None:
+    """Installing the dev extra there would defeat the check.
+
+    The claim is that the reference engine runs on the four core dependencies.
+    A test extra can pull a transitive vendor library, which would then satisfy
+    exactly the import the check exists to refuse -- and the job would still be
+    green.
+    """
+    text = _text()
+    job = text.split("import-closure:", 1)[1].split("\n  secret-scan:", 1)[0]
+    assert "pip install -e ." in job
+    assert "[dev]" not in job, "the import-closure job must not install the dev extra"
 
 
 def test_no_step_is_allowed_to_fail_softly() -> None:

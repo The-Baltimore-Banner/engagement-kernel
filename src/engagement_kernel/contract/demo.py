@@ -39,9 +39,13 @@ read nothing".
 zero: a run that reads it as zero reports measured indifference where there was
 no measurement.
 
-*Events that fall on different calendar days depending on the timezone.* See
-:data:`DAY_BOUNDARY_EVENTS`. This is the point of the whole contract shape, so
-the dataset carries worked examples rather than a warning in prose.
+*Events that fall on different calendar days depending on the timezone, on
+every channel.* See :data:`DAY_BOUNDARY_EVENTS`. This is the point of the whole
+contract shape, so the dataset carries worked examples rather than a warning in
+prose -- and it carries one on reader events, on email and on community actions,
+because the system this contract replaces converted the first and left the other
+two in whatever zone the vendor sent. A dataset with a near-midnight row on only
+one channel lets a consumer convert that one, forget the others, and pass.
 
 The manifest this module writes declares ``America/New_York`` and a
 Sunday-ending week. Those are **the synthetic publisher's own declarations**,
@@ -142,9 +146,17 @@ class DayBoundaryExample:
     Written out rather than computed so the file states what it is claiming.
     ``tests/test_demo_dataset.py`` recomputes every one of these from the
     instant and fails if the claim is wrong, so the table cannot drift.
+
+    ``table`` names the contract table the row lives on, because there is one
+    of these on **every** channel and not only on reader events. That is
+    deliberate: the system this contract replaces converted web and app to the
+    publisher's zone and left email and community in whatever zone the vendor
+    sent, so a dataset that only exercised the boundary on reader events would
+    let exactly that defect through. A consumer's day-boundary test needs a
+    near-midnight row per channel to have anything to discriminate against.
     """
 
-    __slots__ = ("event_id", "instant", "local_dates", "why")
+    __slots__ = ("event_id", "instant", "local_dates", "table", "why")
 
     def __init__(
         self,
@@ -152,11 +164,13 @@ class DayBoundaryExample:
         instant: str,
         local_dates: dict[str, str],
         why: str,
+        table: str = "reader_event",
     ) -> None:
         self.event_id = event_id
         self.instant = instant
         self.local_dates = local_dates
         self.why = why
+        self.table = table
 
 
 DAY_BOUNDARY_EVENTS: tuple[DayBoundaryExample, ...] = (
@@ -200,6 +214,38 @@ DAY_BOUNDARY_EVENTS: tuple[DayBoundaryExample, ...] = (
             "The morning the publisher's zone springs forward. Same calendar day in all "
             "three zones, and included as the control: the boundary examples above are not "
             "an artefact of the harness."
+        ),
+    ),
+    DayBoundaryExample(
+        event_id="eop-0007",
+        instant="2026-03-09T02:33:00",
+        table="email_open",
+        local_dates={
+            DEMO_TIMEZONE: "2026-03-08",
+            "UTC": "2026-03-09",
+            DEMO_COMPARISON_TIMEZONE: "2026-03-09",
+        },
+        why=(
+            "The same Sunday evening, on the email feed. Email is the channel where an "
+            "unconverted vendor timestamp historically does the most damage, and this reader "
+            "has no click on the day at all -- so a consumer that converts clicks and forgets "
+            "opens has a row that only the open side can catch."
+        ),
+    ),
+    DayBoundaryExample(
+        event_id="cmt-0007",
+        instant="2026-03-09T02:35:00",
+        table="community_action",
+        local_dates={
+            DEMO_TIMEZONE: "2026-03-08",
+            "UTC": "2026-03-09",
+            DEMO_COMPARISON_TIMEZONE: "2026-03-09",
+        },
+        why=(
+            "The same Sunday evening again, on the community feed -- the other channel the "
+            "upstream system left unconverted. Without this row a community day-boundary "
+            "check has nothing to discriminate against and passes whether or not the "
+            "conversion is applied."
         ),
     ),
 )
@@ -422,6 +468,10 @@ _EMAIL_OPENS: tuple[tuple[str, str, str, str, str | None], ...] = (
     ("eop-0004", READER_NEVER_PAID_QUIET, "2026-02-18T05:21:00", EMAIL_LIST_DAILY, "cmp-0203"),
     ("eop-0005", READER_NEVER_PAID_QUIET, "2026-02-19T05:19:00", EMAIL_LIST_DAILY, None),
     ("eop-0006", READER_LAPSING, "2026-02-19T20:00:00", EMAIL_LIST_DAILY, "cmp-0205"),
+    # Sunday evening in the publisher's zone, Monday in UTC, and this reader has
+    # no click that day -- so the open side of the email feed carries a
+    # boundary case of its own. See DAY_BOUNDARY_EVENTS.
+    ("eop-0007", READER_FULL_HISTORY, "2026-03-09T02:33:00", EMAIL_LIST_DAILY, "cmp-0224"),
 )
 
 DEMO_COMMUNITY_SITE = "site-main"
@@ -469,6 +519,17 @@ _COMMUNITY: tuple[tuple[str, str, str, str, str, str | None], ...] = (
         "post_created",
         DEMO_COMMUNITY_SITE,
         "cnt-06",
+    ),
+    # The community channel's own day-boundary case: Sunday evening in the
+    # publisher's zone, Monday in UTC, so it moves week as well as day. See
+    # DAY_BOUNDARY_EVENTS.
+    (
+        "cmt-0007",
+        READER_FULL_HISTORY,
+        "2026-03-09T02:35:00",
+        "reply_created",
+        DEMO_COMMUNITY_SITE,
+        "cnt-09",
     ),
 )
 

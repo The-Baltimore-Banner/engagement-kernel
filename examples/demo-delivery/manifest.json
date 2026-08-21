@@ -1,0 +1,44 @@
+{
+  "contract_name": "engagement-kernel-input",
+  "contract_version": "1.0.0",
+  "day_boundary_timezone": "America/New_York",
+  "week_anchor": {
+    "weekday": "Sunday",
+    "position": "week_ends_on"
+  },
+  "article_view": {
+    "definition_id": "demo-article-view-v1",
+    "content_types": [
+      "article",
+      "liveblog"
+    ],
+    "event_kinds": [
+      "content_delivery"
+    ]
+  },
+  "scored_population": {
+    "definition_id": "demo-scored-population-v1",
+    "entitled_states": [
+      "trial",
+      "active",
+      "grace"
+    ]
+  },
+  "optional_inputs": {
+    "email_click": {
+      "status": "available",
+      "available_from": "2025-11-01"
+    },
+    "email_open": {
+      "status": "available",
+      "available_from": "2025-11-01"
+    },
+    "community_action": {
+      "status": "available",
+      "available_from": "2025-10-21"
+    }
+  },
+  "population_exclusions": [
+    "rdr-x9e5"
+  ]
+}

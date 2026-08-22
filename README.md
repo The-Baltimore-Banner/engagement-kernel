@@ -58,6 +58,13 @@ engagement-kernel-build-intermediate <delivery-dir> [--out <dir>] [--print-sql]
   for the four derivations where the obvious rewrite is wrong, and
   [`docs/intermediate-negative-controls.md`](docs/intermediate-negative-controls.md)
   for the captured proof that each one is caught when broken on purpose.
+* **The declarations you have to make.** Four things the contract refuses to
+  default -- what counts as an article view, what to do when the signal is only
+  partly present, which timezone defines a day, and which weekday anchors a
+  week -- because every plausible default is wrong for somebody and wrong
+  silently. [`docs/publisher-declarations.md`](docs/publisher-declarations.md)
+  says what each one changes, and records one publisher's answers as a worked
+  example.
 * **A synthetic demo delivery** in [`examples/demo-delivery/`](examples/demo-delivery),
   every value invented, carrying worked examples of the cases that are easy to
   get wrong -- including an event near local midnight on every channel.

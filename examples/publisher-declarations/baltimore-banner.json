@@ -1,0 +1,24 @@
+{
+  "_what_this_is": "One publisher's answers to the declarations the contract refuses to default. Splice these keys into a manifest.json; they are contract-shaped on purpose. This is a worked example, not a set of defaults -- another publisher's answers are different values, and the contract has no opinion about which are right.",
+  "declaration_set_id": "baltimore-banner-editorial-v1",
+  "decided_on": "2026-08-22",
+  "day_boundary_timezone": "America/New_York",
+  "week_anchor": {
+    "weekday": "Sunday",
+    "position": "week_ends_on"
+  },
+  "article_view": {
+    "definition_id": "baltimore-banner-article-only-v1",
+    "content_types": [
+      "article"
+    ],
+    "event_kinds": [
+      "content_delivery"
+    ]
+  },
+  "_not_declared_here": [
+    "scored_population -- the entitlement states that define who gets scored. A separate decision with a separate owner.",
+    "optional_inputs -- which optional inputs a given delivery carries, and from when. A property of the delivery, not of the editorial policy.",
+    "The email cadence unit (click events versus distinct campaigns clicked). Open, owned by the modelling owner, and it moves with the model version."
+  ]
+}

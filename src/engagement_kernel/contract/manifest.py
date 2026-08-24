@@ -46,6 +46,63 @@ from engagement_kernel.contract.spec import CONTRACT_NAME, OPTIONAL_TABLES
 
 MANIFEST_FILENAME = "manifest.json"
 
+#: The value the shipped template puts where an answer goes. It exists so that
+#: an unanswered template fails as *the question it is*, rather than as whatever
+#: type error the placeholder happens to trigger three checks later. An adopter's
+#: first run is the template's first run, and "'ANSWER-REQUIRED' is not a known
+#: IANA timezone" teaches them nothing about which decision they are being asked
+#: to make or who in their organisation owns it.
+ANSWER_REQUIRED = "ANSWER-REQUIRED"
+
+#: What each undefaulted declaration decides, and where the question is written
+#: out with its owner. Used for the refusal message, so the text a producer reads
+#: when they hit a missing declaration is the text that tells them what to go and
+#: find out. Keyed to match ``_REQUIRED_KEYS``.
+_DECLARATION_GUIDANCE: dict[str, str] = {
+    "day_boundary_timezone": (
+        "which timezone defines a day, as an IANA name. It moves every event into "
+        "day and week bins, so the two plausible answers -- your editorial "
+        "timezone and UTC -- put evening activity on different days. Owned by "
+        "whoever owns editorial reporting"
+    ),
+    "week_anchor": (
+        "which weekday anchors a week and at which end, as "
+        "{'weekday': ..., 'position': 'week_starts_on'|'week_ends_on'}. Both "
+        "conventions are in live use and they differ by up to six days. Owned by "
+        "whoever owns editorial reporting"
+    ),
+    "article_view": (
+        "which content types and event kinds count as reading an article, plus a "
+        "definition_id that travels with the answer. It changes every view-based "
+        "feature. Owned by the newsroom, not by engineering"
+    ),
+    "scored_population": (
+        "which subscription states are entitled, and therefore who is fit and "
+        "scored at all. Two decisions in one: mapping your billing states onto "
+        "the contract's vocabulary is an engineering job, but deciding which of "
+        "them are scored is a commercial one, and the scores do not record which "
+        "was chosen"
+    ),
+    "optional_inputs": (
+        "for each of the three optional inputs, whether it is 'available' (with a "
+        "coverage floor), 'not_deployed' or 'not_yet_launched'. An input you do "
+        "not have is declared absent, never omitted -- absent selects a named "
+        "alternate feature set, omitted would be read as zero activity"
+    ),
+    "contract_name": (
+        f"the contract this delivery claims to implement. Set it to {CONTRACT_NAME!r}"
+    ),
+    "contract_version": (
+        "the contract version this delivery was built against, so a delivery "
+        "built for one field list is not checked against another"
+    ),
+}
+
+#: Where an adopter reads the questions out in full, with an owner each.
+_QUESTIONNAIRE_DOC = "docs/declarations-questionnaire.md"
+#: The template to copy, with every answer left open.
+_TEMPLATE_PATH = "examples/manifest-template.json"
+
 
 class ManifestError(ValueError):
     """The manifest is absent, unreadable, or does not declare what it must.
@@ -220,9 +277,51 @@ _REQUIRED_KEYS = (
 
 
 def _require(raw: dict, key: str) -> object:
+    """Fetch a required key, or refuse in a way the producer can act on.
+
+    The bare form of this message -- "missing required key 'scored_population'" --
+    names the violation and stops. That is enough for whoever wrote the manifest
+    schema and useless to the person meeting it for the first time, who does not
+    yet know that the key is a commercial decision with an owner elsewhere in
+    their organisation. So the refusal carries the question.
+    """
     if key not in raw:
-        raise ManifestError(f"{MANIFEST_FILENAME} is missing required key {key!r}")
+        guidance = _DECLARATION_GUIDANCE.get(key)
+        detail = f" It declares {guidance}." if guidance else ""
+        raise ManifestError(
+            f"{MANIFEST_FILENAME} is missing required key {key!r}.{detail} There is no "
+            f"default: start from {_TEMPLATE_PATH}, which ships every required key with "
+            f"its answer left open, and see {_QUESTIONNAIRE_DOC} for the question and who "
+            f"owns it"
+        )
     return raw[key]
+
+
+def _unanswered_paths(value: object, path: str = "") -> list[str]:
+    """Every location still holding the template's placeholder.
+
+    Collected all at once rather than raised on the first hit: someone filling in
+    a template wants the whole list of what is left, not one question per run.
+    """
+    if isinstance(value, str):
+        return [path or "<root>"] if value.strip() == ANSWER_REQUIRED else []
+    if isinstance(value, dict):
+        found: list[str] = []
+        for key, item in value.items():
+            # Underscore-prefixed keys are the template's own commentary. The
+            # parser ignores them, so a placeholder mentioned inside one is
+            # documentation rather than an unanswered question -- and reporting
+            # it would send the reader to fix a sentence.
+            if isinstance(key, str) and key.startswith("_"):
+                continue
+            found.extend(_unanswered_paths(item, f"{path}.{key}" if path else str(key)))
+        return found
+    if isinstance(value, list):
+        found = []
+        for index, item in enumerate(value):
+            found.extend(_unanswered_paths(item, f"{path}[{index}]"))
+        return found
+    return []
 
 
 def _parse_date(value: object, where: str) -> date | None:
@@ -242,6 +341,26 @@ def parse_manifest(raw: object) -> Manifest:
         raise ManifestError(f"{MANIFEST_FILENAME} must contain a JSON object")
     for key in _REQUIRED_KEYS:
         _require(raw, key)
+
+    # Before anything is type-checked. An unanswered template would otherwise
+    # fail on whichever placeholder the first validation happens to reach, and
+    # report a type error about a sentinel instead of the question behind it.
+    unanswered = _unanswered_paths(raw)
+    if unanswered:
+        questions = sorted({path.split(".")[0].split("[")[0] for path in unanswered})
+        detail = "\n".join(
+            f"  - {name}: {_DECLARATION_GUIDANCE[name]}"
+            for name in questions
+            if name in _DECLARATION_GUIDANCE
+        )
+        raise ManifestError(
+            f"this manifest still carries the template's {ANSWER_REQUIRED!r} placeholder at "
+            f"{len(unanswered)} location(s): {unanswered}. That is the template working as "
+            f"intended -- these are the decisions the contract will not make for you, because "
+            f"every plausible default is wrong for somebody and wrong without anything "
+            f"visibly breaking. Outstanding:\n{detail}\n"
+            f"See {_QUESTIONNAIRE_DOC} for each question and the role that owns the answer"
+        )
 
     name = raw["contract_name"]
     if name != CONTRACT_NAME:

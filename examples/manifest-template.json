@@ -1,0 +1,47 @@
+{
+  "_what_this_is": "A manifest with every answer left open. Copy it into your delivery directory as manifest.json and replace each ANSWER-REQUIRED. Validating it before you do is worth one run: the refusal lists every outstanding decision at once, which is the shortest description of what you are being asked. These are NOT defaults left blank for convenience -- the contract has no defaults for them, because every plausible default is wrong for some publisher and wrong without anything visibly breaking. docs/declarations-questionnaire.md turns each one into a question with the role that owns the answer.",
+
+  "contract_name": "engagement-kernel-input",
+  "contract_version": "1.0.0",
+
+  "_day_boundary_timezone": "DECIDES: which timezone cuts one day from the next, for every channel at once. An IANA name such as 'America/New_York' or 'UTC'. Changing it moves evening activity between days and Saturday-evening activity between weeks. Owner: editorial reporting.",
+  "day_boundary_timezone": "ANSWER-REQUIRED",
+
+  "_week_anchor": "DECIDES: which weekday a week hangs on, and which end it hangs from. weekday is a full name ('Sunday'); position is 'week_starts_on' or 'week_ends_on'. Both conventions are in live use and the same data bins up to six days apart under them. Owner: editorial reporting.",
+  "week_anchor": {
+    "weekday": "ANSWER-REQUIRED",
+    "position": "ANSWER-REQUIRED"
+  },
+
+  "_article_view": "DECIDES: what counts as reading an article. content_types and event_kinds select from the contract vocabulary; definition_id is your own label and travels with every number produced under it, so change the id whenever you change the selection. Owner: the newsroom -- this is an editorial definition, not an engineering one.",
+  "article_view": {
+    "definition_id": "ANSWER-REQUIRED",
+    "content_types": ["ANSWER-REQUIRED"],
+    "event_kinds": ["ANSWER-REQUIRED"]
+  },
+
+  "_scored_population": "DECIDES: who is fit and scored at all. Two decisions wearing one key. First, map your billing states onto the contract's vocabulary -- an engineering job. Second, choose which of those states are entitled and therefore scored -- a commercial one. A deployment that scores paying readers only and one that also scores trials answer different questions from the same data, and nothing in the output says which. Owner: whoever owns subscription policy, with engineering doing the first half.",
+  "scored_population": {
+    "definition_id": "ANSWER-REQUIRED",
+    "entitled_states": ["ANSWER-REQUIRED"]
+  },
+
+  "_optional_inputs": "DECIDES: which of the three optional inputs you deliver, and from when. status is 'available' (then available_from is required, as an ISO date), 'not_deployed' (you do not have this product) or 'not_yet_launched' (you have it now, but not for the whole analysis period). Declaring an input absent is a supported answer, not a failure: the engine selects a named alternate feature set and says so. Leaving one out is NOT the same thing -- an omitted input has no declared reason, and the run cannot tell 'never existed' from 'stopped arriving'. You can start with all three absent.",
+  "optional_inputs": {
+    "email_click": {
+      "status": "ANSWER-REQUIRED",
+      "available_from": null
+    },
+    "email_open": {
+      "status": "ANSWER-REQUIRED",
+      "available_from": null
+    },
+    "community_action": {
+      "status": "ANSWER-REQUIRED",
+      "available_from": null
+    }
+  },
+
+  "_population_exclusions": "OPTIONAL, and it has a default: none. Opaque reader ids to leave out of the scored population -- internal test accounts, staff readers. Ids only: an entry containing an '@', a space or a SQL wildcard is refused, because a rule over a personal attribute belongs upstream where it can be reviewed, not in a manifest. Delete this key if you have nothing to exclude.",
+  "population_exclusions": []
+}

@@ -297,9 +297,17 @@ def _check_field_types(read: TableRead, usable: set[str]) -> tuple[list[Finding]
                     row_count=read.n_rows,
                     message=(
                         f"column {spec_field.name!r} is a timezone-naive timestamp "
-                        f"({actual_type}); the contract declares {spec_field.arrow_type}. A "
-                        "naive instant silently inherits whichever zone the producing system "
-                        "used, which is exactly the day-boundary defect this contract refuses"
+                        f"({actual_type}); the contract declares {spec_field.arrow_type}. "
+                        "Attach the zone the producing system actually stored these instants "
+                        "in -- for most warehouses that is UTC -- at the point you write the "
+                        "file. Do NOT localise them to the timezone you declared as the day "
+                        "boundary: the engine applies that itself, so doing it here shifts "
+                        "every instant twice, and the second shift is invisible because the "
+                        "column then looks correct. If you do not know which zone the source "
+                        "stored, that is the defect, and guessing it here is how it stops "
+                        "being findable. A naive instant inherits whichever zone the producing "
+                        "system happened to use, which is exactly the day-boundary error this "
+                        "contract exists to refuse"
                     ),
                 )
             )
@@ -313,8 +321,13 @@ def _check_field_types(read: TableRead, usable: set[str]) -> tuple[list[Finding]
                     row_count=read.n_rows,
                     message=(
                         f"column {spec_field.name!r} is {actual_type}, the contract declares "
-                        f"{spec_field.arrow_type}. The value is not coerced: coercing is how a "
-                        "label becomes a number and a date becomes nothing"
+                        f"{spec_field.arrow_type}. Cast it to {spec_field.arrow_type} in the "
+                        "query or job that writes this file, and look at what the cast does to "
+                        "the values before you trust it -- a string column that will not cast "
+                        "cleanly is carrying something the contract has no field for, and the "
+                        "fix is upstream rather than a cast. The validator will not coerce it "
+                        "for you: coercing is how a label becomes a number and a date becomes "
+                        "nothing, silently, in the direction that keeps the pipeline running"
                     ),
                 )
             )
@@ -826,7 +839,15 @@ def _absent_result(spec: TableSpec, declared_available: bool) -> TableResult:
                     table=spec.name,
                     code=MISSING_REQUIRED_TABLE,
                     message=(
-                        f"{spec.filename} is required by the contract and is not in the delivery"
+                        f"{spec.filename} is required by the contract and is not in the "
+                        f"delivery. Its grain: {spec.grain} Unique on "
+                        f"({', '.join(spec.dedup_key)}). Note what the fix is *not*: the "
+                        "manifest's availability mechanism covers the three optional inputs "
+                        "only, so there is no way to declare a required input absent. Either "
+                        "the file is produced, or the delivery cannot conform yet -- and the "
+                        "second is a real answer, reached by narrowing the window to a period "
+                        "the input covers or by concluding this deployment is not ready. "
+                        "docs/contract-reference.md has the field list"
                     ),
                 ),
             ),

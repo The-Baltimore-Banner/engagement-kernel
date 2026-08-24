@@ -72,5 +72,8 @@ def test_every_declared_console_script_resolves() -> None:
         "engagement-kernel-build-intermediate",
         "engagement-kernel-engagement-lane",
         "engagement-kernel-cohort",
+        "engagement-kernel-lint-mapping",
+        "engagement-kernel-check-oracle",
+        "engagement-kernel-demo-oracle",
     }
     assert closure._resolve_console_scripts()

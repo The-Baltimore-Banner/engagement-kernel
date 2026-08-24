@@ -1,0 +1,470 @@
+{
+  "_what_this_is": "A worked mapping manifest for a newsroom that does not exist. Every table, column and value is invented. It is here to show the shape of a complete answer, not to be copied: your warehouse is not Riverbend's, and a mapping copied from someone else's warehouse is the one artifact in this repository that cannot be reused. Check it with `engagement-kernel-lint-mapping examples/mapping --adapter-bundle examples/mapping/adapter`.",
+  "_why_no_gaps": "Every field here resolves. A complete mapping is what you are aiming at, so the example shows one. The fourth outcome -- 'gap', for a field you cannot produce and cannot derive -- is shown in docs/agent-spec-1-map-your-warehouse.md instead, because an example whose job is to show a good answer should not also be the illustration of an unfinished one.",
+  "schema_version": 1,
+  "contract": {
+    "name": "engagement-kernel-input",
+    "version": "1.0.0"
+  },
+  "submission": {
+    "id": "riverbend-ledger-2026-08",
+    "created_at": "2026-08-24T00:00:00Z"
+  },
+  "adapter": {
+    "root": "adapter/",
+    "revision": "git:0000000000000000000000000000000000000000",
+    "entrypoint": "README.md"
+  },
+  "declarations": {
+    "day_boundary_timezone": {
+      "owner_role": "Managing Editor",
+      "decision_ref": "riverbend-editorial-decisions-2026-06#day-boundary"
+    },
+    "week_anchor": {
+      "owner_role": "Managing Editor",
+      "decision_ref": "riverbend-editorial-decisions-2026-06#week-anchor"
+    },
+    "article_view": {
+      "owner_role": "Director of Audience",
+      "decision_ref": "riverbend-editorial-decisions-2026-06#what-counts-as-a-read"
+    },
+    "scored_population": {
+      "owner_role": "Director of Subscriptions",
+      "decision_ref": "riverbend-commercial-decisions-2026-07#who-gets-scored"
+    }
+  },
+  "tables": {
+    "reader": {
+      "fields": {
+        "reader_id": {
+          "outcome": "rename",
+          "source": {
+            "system": "warehouse",
+            "relation": "identity.person",
+            "column": "person_key"
+          },
+          "implementation": {
+            "path": "readers.sql",
+            "sha256": "068c1ec985e1eddd3766b1c23109812e3225a57eaa6608a873ed0d55899a2752"
+          },
+          "rationale": "The identity service's resolved-person key. Already one row per person, so the rename is mechanical -- but the filter beside it is not: identity.person also holds a row per anonymous browser, and shipping those would mint one contract reader per device."
+        },
+        "id_grain": {
+          "outcome": "derive",
+          "inputs": [
+            {
+              "system": "warehouse",
+              "relation": "identity.person",
+              "column": "resolution_source"
+            }
+          ],
+          "implementation": {
+            "path": "readers.sql",
+            "sha256": "068c1ec985e1eddd3766b1c23109812e3225a57eaa6608a873ed0d55899a2752"
+          },
+          "rationale": "Constant 'resolved_person' for the rows that survive the resolution filter. Recorded as a derivation rather than a rename because the constant is only true given that filter; the source column it depends on is what makes it true."
+        }
+      }
+    },
+    "reader_event": {
+      "fields": {
+        "event_id": {
+          "outcome": "rename",
+          "source": {
+            "system": "warehouse",
+            "relation": "analytics.page_event",
+            "column": "event_key"
+          },
+          "implementation": {
+            "path": "events.sql",
+            "sha256": "db4c452719174f576566511f82fce471bb9bc719e3bb012da638dbb87af3b2eb"
+          },
+          "rationale": "The event stream's own primary key, unique across the stream."
+        },
+        "reader_id": {
+          "outcome": "rename",
+          "source": {
+            "system": "warehouse",
+            "relation": "analytics.page_event",
+            "column": "person_key"
+          },
+          "implementation": {
+            "path": "events.sql",
+            "sha256": "db4c452719174f576566511f82fce471bb9bc719e3bb012da638dbb87af3b2eb"
+          },
+          "rationale": "The same identity key as the registry, so the referential-integrity check the validator runs is a real check rather than a coincidence of naming."
+        },
+        "event_ts": {
+          "outcome": "rename",
+          "source": {
+            "system": "warehouse",
+            "relation": "analytics.page_event",
+            "column": "occurred_at"
+          },
+          "implementation": {
+            "path": "events.sql",
+            "sha256": "db4c452719174f576566511f82fce471bb9bc719e3bb012da638dbb87af3b2eb"
+          },
+          "rationale": "Stored UTC and emitted UTC, unconverted. A rename rather than a derivation on purpose: converting it to the declared day boundary here would apply that shift twice, since the engine applies it as well, and the second application is invisible."
+        },
+        "channel": {
+          "outcome": "derive",
+          "inputs": [
+            {
+              "system": "warehouse",
+              "relation": "analytics.page_event",
+              "column": "surface"
+            }
+          ],
+          "implementation": {
+            "path": "events.sql",
+            "sha256": "db4c452719174f576566511f82fce471bb9bc719e3bb012da638dbb87af3b2eb"
+          },
+          "rationale": "Riverbend's four surfaces collapse onto the contract's two: ios and android are both 'app', web and amp are both 'web'. A collapse loses the distinction between them, which is acceptable here because no feature in the engine reads it."
+        },
+        "event_kind": {
+          "outcome": "derive",
+          "inputs": [
+            {
+              "system": "warehouse",
+              "relation": "analytics.page_event",
+              "column": "article_key"
+            }
+          ],
+          "implementation": {
+            "path": "events.sql",
+            "sha256": "db4c452719174f576566511f82fce471bb9bc719e3bb012da638dbb87af3b2eb"
+          },
+          "rationale": "Constant 'content_delivery' for rows that reference an article. The event stream holds no other kind that the contract has a value for, so rows without an article are dropped rather than mapped to something adjacent."
+        },
+        "content_id": {
+          "outcome": "rename",
+          "source": {
+            "system": "warehouse",
+            "relation": "analytics.page_event",
+            "column": "article_key"
+          },
+          "implementation": {
+            "path": "events.sql",
+            "sha256": "db4c452719174f576566511f82fce471bb9bc719e3bb012da638dbb87af3b2eb"
+          },
+          "rationale": "The CMS article key, joinable to the content table. Nullable in the contract; here it is never null because rows without one are filtered out upstream of the export."
+        },
+        "session_id": {
+          "outcome": "derive",
+          "inputs": [
+            {
+              "system": "warehouse",
+              "relation": "analytics.page_event",
+              "column": "person_key"
+            },
+            {
+              "system": "warehouse",
+              "relation": "analytics.page_event",
+              "column": "occurred_at"
+            }
+          ],
+          "implementation": {
+            "path": "sessionize.sql",
+            "sha256": "87673ec8691e48151f63e0518e8ac6640b0ce993e35cb8a9c91de35c2cc9080e",
+            "symbol": "session_key"
+          },
+          "rationale": "Riverbend's warehouse has no sessions at all. Cut on 30 minutes of inactivity per reader, which is the threshold their existing dashboards already use -- choosing a different one would put the kernel's session counts at odds with every number the newsroom already trusts, for no stated reason."
+        },
+        "engagement_time_seconds": {
+          "outcome": "derive",
+          "inputs": [
+            {
+              "system": "warehouse",
+              "relation": "analytics.page_event",
+              "column": "heartbeat_count"
+            }
+          ],
+          "implementation": {
+            "path": "sessionize.sql",
+            "sha256": "87673ec8691e48151f63e0518e8ac6640b0ce993e35cb8a9c91de35c2cc9080e",
+            "symbol": "active_seconds"
+          },
+          "rationale": "Heartbeat count times 15 seconds, which is measured attention. Explicitly NOT the wall-clock gap between events, which counts the lunch break a reader left the tab open through. Zero heartbeats becomes null, not 0: null means unmeasured and 0 would mean arrived and read nothing."
+        }
+      }
+    },
+    "content": {
+      "fields": {
+        "content_id": {
+          "outcome": "rename",
+          "source": {
+            "system": "warehouse",
+            "relation": "cms.article",
+            "column": "article_key"
+          },
+          "implementation": {
+            "path": "content.sql",
+            "sha256": "cdec4545390ae703f85c791007168e8ed63641000873296617a8df2dde2abaff"
+          },
+          "rationale": "The CMS primary key, the same key the event stream references."
+        },
+        "content_type": {
+          "outcome": "derive",
+          "inputs": [
+            {
+              "system": "warehouse",
+              "relation": "cms.article",
+              "column": "cms_template"
+            }
+          ],
+          "implementation": {
+            "path": "content.sql",
+            "sha256": "cdec4545390ae703f85c791007168e8ed63641000873296617a8df2dde2abaff"
+          },
+          "rationale": "Riverbend's templates map onto the contract's content types. Templates with no counterpart become 'other' rather than being dropped: the article-view definition selects which types count, so a type that exists and is not selected is a different statement from a row that is not there."
+        },
+        "section_resolution": {
+          "outcome": "derive",
+          "inputs": [
+            {
+              "system": "warehouse",
+              "relation": "cms.article",
+              "column": "section_slug"
+            }
+          ],
+          "implementation": {
+            "path": "content.sql",
+            "sha256": "cdec4545390ae703f85c791007168e8ed63641000873296617a8df2dde2abaff"
+          },
+          "rationale": "'resolved' when the CMS section tag is set, 'unresolved' when it is not -- about 4% of articles. The tempting fix is to fill those with the site default, which would attribute a twentieth of all reading to a section nobody chose."
+        },
+        "sections": {
+          "outcome": "derive",
+          "inputs": [
+            {
+              "system": "warehouse",
+              "relation": "cms.article",
+              "column": "section_slug"
+            }
+          ],
+          "implementation": {
+            "path": "content.sql",
+            "sha256": "cdec4545390ae703f85c791007168e8ed63641000873296617a8df2dde2abaff"
+          },
+          "rationale": "A one-element list, because Riverbend's CMS permits exactly one section per article. The contract's list type allows several and the fractional attribution that goes with them; a publisher with one section per article simply never exercises it."
+        },
+        "published_ts": {
+          "outcome": "rename",
+          "source": {
+            "system": "warehouse",
+            "relation": "cms.article",
+            "column": "first_published_at"
+          },
+          "implementation": {
+            "path": "content.sql",
+            "sha256": "cdec4545390ae703f85c791007168e8ed63641000873296617a8df2dde2abaff"
+          },
+          "rationale": "First publication, not last update. An updated article is not a new one, and using the update timestamp would make an old article look freshly published every time a typo was fixed."
+        }
+      }
+    },
+    "subscription_span": {
+      "fields": {
+        "reader_id": {
+          "outcome": "rename",
+          "source": {
+            "system": "warehouse",
+            "relation": "billing.status_interval",
+            "column": "person_key"
+          },
+          "implementation": {
+            "path": "subscriptions.sql",
+            "sha256": "8fe9ddf1ed82e1bff7ae054409d1a907eb0ac8f3b18b6d2ed9364aedcacabbf5"
+          },
+          "rationale": "The identity key again. Riverbend's billing system was migrated onto it in 2024, which is why the coverage floor on subscription history is where it is."
+        },
+        "state": {
+          "outcome": "derive",
+          "inputs": [
+            {
+              "system": "warehouse",
+              "relation": "billing.status_interval",
+              "column": "billing_status"
+            }
+          ],
+          "implementation": {
+            "path": "subscriptions.sql",
+            "sha256": "8fe9ddf1ed82e1bff7ae054409d1a907eb0ac8f3b18b6d2ed9364aedcacabbf5"
+          },
+          "rationale": "Eleven billing statuses onto the contract's seven states. The judgement calls: past_due and unpaid both become 'grace' because both are still-entitled dunning states at Riverbend; refunded and chargeback both become 'cancelled'; comped becomes 'active' because a comped reader has full access. Which of the seven are ENTITLED is not decided here -- that is scored_population, and it has a different owner."
+        },
+        "payer_type": {
+          "outcome": "derive",
+          "inputs": [
+            {
+              "system": "warehouse",
+              "relation": "billing.status_interval",
+              "column": "plan_kind"
+            }
+          ],
+          "implementation": {
+            "path": "subscriptions.sql",
+            "sha256": "8fe9ddf1ed82e1bff7ae054409d1a907eb0ac8f3b18b6d2ed9364aedcacabbf5"
+          },
+          "rationale": "'individual' for consumer plans, null for institutional and gift plans. Riverbend cannot distinguish who pays on those, and the contract's null means unknown. Writing 'individual' would convert a known unknown into a false known."
+        },
+        "start_ts": {
+          "outcome": "rename",
+          "source": {
+            "system": "warehouse",
+            "relation": "billing.status_interval",
+            "column": "valid_from"
+          },
+          "implementation": {
+            "path": "subscriptions.sql",
+            "sha256": "8fe9ddf1ed82e1bff7ae054409d1a907eb0ac8f3b18b6d2ed9364aedcacabbf5"
+          },
+          "rationale": "Interval start, inclusive, matching the contract."
+        },
+        "end_ts": {
+          "outcome": "rename",
+          "source": {
+            "system": "warehouse",
+            "relation": "billing.status_interval",
+            "column": "valid_to"
+          },
+          "implementation": {
+            "path": "subscriptions.sql",
+            "sha256": "8fe9ddf1ed82e1bff7ae054409d1a907eb0ac8f3b18b6d2ed9364aedcacabbf5"
+          },
+          "rationale": "Interval end, exclusive, null while the span is still open. The validator refuses overlapping spans and more than one open span per reader, which caught two genuine duplicate-row defects in the billing log on the first run."
+        }
+      }
+    },
+    "email_click": {
+      "availability": {
+        "status": "available",
+        "available_from": "2025-03-01"
+      },
+      "fields": {
+        "event_id": {
+          "outcome": "rename",
+          "source": {
+            "system": "esp",
+            "relation": "esp.click",
+            "column": "click_id"
+          },
+          "implementation": {
+            "path": "email_clicks.sql",
+            "sha256": "07fe04b0052b2ab6dac9ff0b412bf4da1a9dc9be4d388c38cebe3dd126c3a26b"
+          },
+          "rationale": "The ESP's own click id. Unique per click, not per campaign-recipient pair."
+        },
+        "reader_id": {
+          "outcome": "derive",
+          "inputs": [
+            {
+              "system": "esp",
+              "relation": "esp.click",
+              "column": "subscriber_hash"
+            },
+            {
+              "system": "esp",
+              "relation": "esp.subscriber_map",
+              "column": "person_key"
+            }
+          ],
+          "implementation": {
+            "path": "email_clicks.sql",
+            "sha256": "07fe04b0052b2ab6dac9ff0b412bf4da1a9dc9be4d388c38cebe3dd126c3a26b"
+          },
+          "rationale": "The ESP identifies subscribers by its own hash, so this joins through a mapping table. Rows whose hash does not resolve are dropped rather than pointed at a placeholder reader: an unresolved click belongs to somebody the rest of the delivery has never heard of. The drop rate is about 2% and worth monitoring, because if it climbed, email engagement would fall for a reason that is not about readers."
+        },
+        "event_ts": {
+          "outcome": "rename",
+          "source": {
+            "system": "esp",
+            "relation": "esp.click",
+            "column": "clicked_at"
+          },
+          "implementation": {
+            "path": "email_clicks.sql",
+            "sha256": "07fe04b0052b2ab6dac9ff0b412bf4da1a9dc9be4d388c38cebe3dd126c3a26b"
+          },
+          "rationale": "UTC from the ESP, emitted unconverted for the same reason as the reading events."
+        },
+        "list_id": {
+          "outcome": "rename",
+          "source": {
+            "system": "esp",
+            "relation": "esp.click",
+            "column": "list_uuid"
+          },
+          "implementation": {
+            "path": "email_clicks.sql",
+            "sha256": "07fe04b0052b2ab6dac9ff0b412bf4da1a9dc9be4d388c38cebe3dd126c3a26b"
+          },
+          "rationale": "The newsletter the click came from. Carried through rather than collapsed, so the engine can scope cadence to particular lists without a second delivery."
+        },
+        "campaign_id": {
+          "outcome": "rename",
+          "source": {
+            "system": "esp",
+            "relation": "esp.click",
+            "column": "campaign_uuid"
+          },
+          "implementation": {
+            "path": "email_clicks.sql",
+            "sha256": "07fe04b0052b2ab6dac9ff0b412bf4da1a9dc9be4d388c38cebe3dd126c3a26b"
+          },
+          "rationale": "The individual send. Nullable in the contract and occasionally null here, for clicks on evergreen automated emails that Riverbend's ESP does not treat as campaigns."
+        }
+      }
+    },
+    "email_open": {
+      "availability": {
+        "status": "not_yet_launched",
+        "statement": "Riverbend's ESP has an open feed, but open tracking was only enabled in June 2026, part-way through the analysis period. Declaring it available with a coverage floor was considered and rejected: the floor mechanism handles a window that starts before the input existed, and the intended first run reaches back further than that, so every window would drop the block anyway. Revisit once a full year sits after the enablement date."
+      },
+      "fields": {
+        "event_id": {
+          "outcome": "declare_absent"
+        },
+        "reader_id": {
+          "outcome": "declare_absent"
+        },
+        "event_ts": {
+          "outcome": "declare_absent"
+        },
+        "list_id": {
+          "outcome": "declare_absent"
+        },
+        "campaign_id": {
+          "outcome": "declare_absent"
+        }
+      }
+    },
+    "community_action": {
+      "availability": {
+        "status": "not_deployed",
+        "statement": "Riverbend closed comments in 2019 and runs no events, no forum and no reader submissions. There is no source to map, now or later, so this is 'not_deployed' rather than 'not_yet_launched' -- the distinction matters because not_yet_launched drops the block only for windows that reach back past a floor, and there is no floor here to reach past."
+      },
+      "fields": {
+        "event_id": {
+          "outcome": "declare_absent"
+        },
+        "reader_id": {
+          "outcome": "declare_absent"
+        },
+        "event_ts": {
+          "outcome": "declare_absent"
+        },
+        "action_kind": {
+          "outcome": "declare_absent"
+        },
+        "site_id": {
+          "outcome": "declare_absent"
+        },
+        "target_content_id": {
+          "outcome": "declare_absent"
+        }
+      }
+    }
+  }
+}

@@ -53,6 +53,12 @@ engagement-kernel-demo-dataset = "engagement_kernel.contract.demo:main"
 engagement-kernel-build-intermediate = "engagement_kernel.intermediate.cli:main"
 engagement-kernel-engagement-lane = "engagement_kernel.engagement.cli:main"
 engagement-kernel-cohort = "engagement_kernel.engagement.cohort:main"
+# The adopter-facing checks on an agent-produced mapping. Stdlib plus the
+# contract's own table definitions for the lint; the oracle drives the validator
+# in-process, so neither adds a dependency.
+engagement-kernel-lint-mapping = "engagement_kernel.contract.mapping:main"
+engagement-kernel-check-oracle = "engagement_kernel.contract.oracle:main"
+engagement-kernel-demo-oracle = "engagement_kernel.contract.oracle_demo:main"
 
 [project.urls]
 Homepage = "https://github.com/The-Baltimore-Banner/engagement-kernel"

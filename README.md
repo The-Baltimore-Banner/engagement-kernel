@@ -6,11 +6,16 @@ can be read.
 
 ## Status: pre-release, not yet published
 
-**This repository is pre-release. It is not published, not publicly available,
-and not yet usable.** There is no release, no package on any index, and no
-stable interface. The scaffold and CI gate, the canonical input contract and its
-validator, and the daily intermediate build are in place; the modelling code --
-scoring, subscriber clustering and content personas -- has not been added yet.
+**This repository is pre-release and not publicly available.** There is no
+release, no package on any index, and no stable interface. What is in place: the
+scaffold and CI gate, the canonical input contract and its validator, the daily
+intermediate build, and the engagement lane -- a weekly engagement score and a
+behavioural cluster per reader. The content-persona lane is not being built.
+
+It **is** runnable end to end, on the synthetic data in `examples/` or on a
+delivery you produce, which is what [the adopter path](docs/adopter-path.md) is
+for. "Not published" is about distribution and interface stability, not about
+whether the engine works.
 
 Nothing here should be treated as a supported dependency. Interfaces, package
 names and file layouts will change without notice until a first release is cut.
@@ -50,6 +55,13 @@ engagement-kernel-cohort <dir> [--readers N]
 
 # Fit the engagement model and score every complete week.
 engagement-kernel-engagement-lane run <delivery-dir> --bucket-map <map.json> [--output-dir <dir>]
+
+# Check a mapping manifest: every contract field accounted for, every gap owned.
+engagement-kernel-lint-mapping <dir> [--adapter-bundle <dir>] [--warnings-as-errors]
+
+# Write a worked validator-oracle example, then check it.
+engagement-kernel-demo-oracle <dir>
+engagement-kernel-check-oracle <dir>
 ```
 
 * **The input contract.** Seven tables, each with a grain, a deduplication key,
@@ -76,6 +88,17 @@ engagement-kernel-engagement-lane run <delivery-dir> --bucket-map <map.json> [--
   [`docs/engagement-lane-negative-controls.md`](docs/engagement-lane-negative-controls.md)
   carries the controls and the evidence that each one fails when the thing it
   protects is broken.
+* **The adopter path.** [`docs/adopter-path.md`](docs/adopter-path.md) is the
+  six-step sequence for running the engine on your own data, and
+  [`docs/declarations-questionnaire.md`](docs/declarations-questionnaire.md) turns
+  the four undefaulted declarations into questions with an owner named per
+  question -- one of them commercial rather than technical. The genuinely hard
+  step, mapping your warehouse onto the contract, ships as
+  [`docs/agent-spec-1-map-your-warehouse.md`](docs/agent-spec-1-map-your-warehouse.md):
+  a brief for your own coding agent, whose oracle is this repository's validator.
+  A prose walkthrough would have to be written against one warehouse and it would
+  be ours, which is how a portable contract quietly re-anchors on one vendor's
+  shapes.
 * **The declarations you have to make.** Four things the contract refuses to
   default -- what counts as an article view, what to do when the signal is only
   partly present, which timezone defines a day, and which weekday anchors a
@@ -86,6 +109,56 @@ engagement-kernel-engagement-lane run <delivery-dir> --bucket-map <map.json> [--
 * **A synthetic demo delivery** in [`examples/demo-delivery/`](examples/demo-delivery),
   every value invented, carrying worked examples of the cases that are easy to
   get wrong -- including an event near local midnight on every channel.
+
+## Two paths through this repository
+
+They are different documents and the difference is not cosmetic. Following the
+wrong one is the most common way to conclude this software is harder to use than
+it is.
+
+| | you want | start at |
+| --- | --- | --- |
+| **Adopter** | to score your own readers | [**docs/adopter-path.md**](docs/adopter-path.md) |
+| **Contributor** | to change the engine | [Getting started for contributors](#getting-started-for-contributors) |
+
+The adopter path does not begin with an editable install and the test suite. It
+begins with the four decisions the contract will not make for you, because those
+are what everything downstream means, and because they are decisions somebody
+other than the person running the port often has to make.
+
+## Four required inputs, three optional
+
+<!-- input-shape:begin -->
+A delivery is **one directory**: seven Parquet files -- **four required, three
+optional** -- and a `manifest.json`.
+
+The four you must produce:
+
+* **`reader`** -- The reader registry.
+* **`reader_event`** -- Web and app reading activity, one row per event, with the instant it happened.
+* **`content`** -- The content dimension: what each piece of content is and which sections it belongs to.
+* **`subscription_span`** -- Subscription state as a history of intervals, so a reader's status can be resolved as of any historical date.
+
+The three you may declare absent:
+
+| optional input | feature block | what a run without it loses |
+| --- | --- | --- |
+| `email_click` | `email_cadence` | The loyalty block, whose one signal is how many of the last four weeks the reader clicked an email in. Habit shows up here and nowhere else: reading volume cannot distinguish a reader who returns weekly from one who arrived once and read a great deal. Clusters stay meaningful without it, and the returning-reader distinction gets weaker. |
+| `email_open` | `deliverability` | Nothing in the model. Opens are deliberately not a model feature -- machine opens inflate them and cannot be cleaned out, so an open says a message reached a reachable inbox and nothing about interest. This input exists for reachability reporting, in its own table and its own block precisely so that 'opens are never a feature' is structural rather than a promise. Omit it and the model is unchanged. |
+| `community_action` | `community` | The community block: how many community actions the reader took in the window, and on how many distinct days. This is the clearest contribution signal in the model, so a deployment without it distinguishes heavy readers from participants less sharply. It is also the block most newsrooms will not have, which is why its absence is a first-class declaration rather than an obstacle. |
+<!-- input-shape:end -->
+
+This is on the front page because of how often it is read the other way round. A
+newsroom with no app, no comments product or no email newsletter sees "seven
+tables" and concludes the engine is not for them. It is: an absent input is
+*declared* absent -- `not_deployed` if you will never have it, `not_yet_launched`
+with a floor date if the product is newer than your analysis window -- and the
+engine answers by selecting a named alternate feature set. **Nothing is ever
+filled with zeros.** A reader with no community data is not a reader who never
+comments, and a model told otherwise produces clusters that are plausible and
+wrong.
+
+You can start with all three absent.
 
 ## Layout
 
@@ -103,7 +176,11 @@ The four packages are deliberately layered: `contract` knows nothing about the
 others, `intermediate` builds on `contract`, and `engagement` and `content` build
 on `intermediate`.
 
-## Getting started
+## Getting started for contributors
+
+**This is the contributor path** -- for changing the engine. To *run* it on your
+own data, you want [docs/adopter-path.md](docs/adopter-path.md), which starts
+somewhere else entirely and does not need the `dev` extra.
 
 Requires Python 3.11 or newer.
 

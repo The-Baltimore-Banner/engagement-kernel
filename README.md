@@ -44,6 +44,12 @@ engagement-kernel-demo-dataset <dir>
 
 # Build the daily intermediate tables from a delivery.
 engagement-kernel-build-intermediate <delivery-dir> [--out <dir>] [--print-sql]
+
+# Write a synthetic cohort large enough to fit a model on.
+engagement-kernel-cohort <dir> [--readers N]
+
+# Fit the engagement model and score every complete week.
+engagement-kernel-engagement-lane run <delivery-dir> --bucket-map <map.json> [--output-dir <dir>]
 ```
 
 * **The input contract.** Seven tables, each with a grain, a deduplication key,
@@ -58,6 +64,18 @@ engagement-kernel-build-intermediate <delivery-dir> [--out <dir>] [--print-sql]
   for the four derivations where the obvious rewrite is wrong, and
   [`docs/intermediate-negative-controls.md`](docs/intermediate-negative-controls.md)
   for the captured proof that each one is caught when broken on purpose.
+* **The engagement lane.** The modelling layer: a weekly engagement score and a
+  behavioural cluster per reader, fit once and applied thereafter, on pandas and
+  scikit-learn with no warehouse and no vendor SDK.
+  [`docs/engagement-lane.md`](docs/engagement-lane.md) covers what it publishes,
+  the two guards that decide what may become a model feature, and -- in full --
+  the census of what deliberately did not come across.
+  [`docs/engagement-lane-parity.md`](docs/engagement-lane-parity.md) says why
+  parity is stated structurally rather than numerically, including the email day
+  shift that makes numeric email parity unavailable by construction.
+  [`docs/engagement-lane-negative-controls.md`](docs/engagement-lane-negative-controls.md)
+  carries the controls and the evidence that each one fails when the thing it
+  protects is broken.
 * **The declarations you have to make.** Four things the contract refuses to
   default -- what counts as an article view, what to do when the signal is only
   partly present, which timezone defines a day, and which weekday anchors a

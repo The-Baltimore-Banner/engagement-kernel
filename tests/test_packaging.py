@@ -17,7 +17,14 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PYPROJECT = REPO_ROOT / "pyproject.toml"
 
-EXPECTED_CORE = {"duckdb", "pandas", "pyarrow", "scikit-learn"}
+#: The core runtime, named exactly. An allowlist rather than a rule, so adding a
+#: dependency is a deliberate edit here as well as in pyproject.
+#:
+#: ``scipy`` is declared although scikit-learn already requires it: the engagement
+#: lane calls ``scipy.optimize`` directly, and depending on it transitively means a
+#: future scikit-learn that dropped it would break this package with an error
+#: pointing somewhere else entirely.
+EXPECTED_CORE = {"duckdb", "pandas", "pyarrow", "scikit-learn", "scipy"}
 EXPECTED_PACKAGES = ("contract", "intermediate", "engagement", "content")
 
 # Substrings that mean "this dependency ties us to one vendor or one cloud".
@@ -44,7 +51,7 @@ def _requirement_name(requirement: str) -> str:
     return re.split(r"[\[<>=!~;\s]", requirement, maxsplit=1)[0].strip().lower()
 
 
-def test_core_dependencies_are_exactly_the_four_pinned_libraries() -> None:
+def test_core_dependencies_are_exactly_the_declared_libraries() -> None:
     project = _load()["project"]
     assert {_requirement_name(item) for item in project["dependencies"]} == EXPECTED_CORE
 

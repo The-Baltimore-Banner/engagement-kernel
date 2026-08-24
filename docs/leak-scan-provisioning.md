@@ -28,8 +28,18 @@ unavailable.
 
 ```toml
 [deny]
-names = ["Firstname Lastname", "Another Person"]
+names = ["PLACEHOLDER-ONE", "PLACEHOLDER-TWO"]
 ```
+
+The placeholders are deliberately **not** name-shaped, and that is not fastidiousness.
+Terms match as case-insensitive bounded substrings, and the usual generic stand-in for
+a person's name is plausible precisely because it is assembled from the parts real
+names are assembled from — so it can match a real deny term and fail the gate *on this
+document*. Which is the rule working correctly, and is extremely confusing to debug.
+
+Note that the same hazard applies to writing this paragraph: an example of a bad
+example is still an example. Keep every value here obviously synthetic, and describe
+the bad shape rather than quoting one.
 
 `hostnames` is also accepted and is **not** needed: the four hostname terms that
 matter are already in the committed `tools/leak_scan.toml`, because a hostname is
@@ -58,7 +68,7 @@ anywhere but the secret.
 ```bash
 cat > /tmp/deny.toml <<'EOF'
 [deny]
-names = ["Firstname Lastname"]
+names = ["PLACEHOLDER-ONE"]
 EOF
 
 gh secret set LEAK_SCAN_DENY_TOML \

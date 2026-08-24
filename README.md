@@ -168,8 +168,25 @@ kept outside the tree:
 LEAK_SCAN_DENY_FILE=~/private/engagement-kernel-deny.toml python3 tools/leak_scan.py
 ```
 
-A named-but-missing deny file is a hard error, not a warning, so the strictest
-part of the policy cannot quietly stop applying.
+A named-but-missing deny file is a hard error, not a warning. That is necessary
+and it is **not sufficient**, and the gap between the two is worth reading,
+because this gate spent months in it. A file that is *missing* raises. A file that
+exists and yields no names does not: an empty file, a bare `[deny]` table and
+`names = []` all load silently with zero terms, so `deny-name` compiles no
+patterns and matches nothing — while the scan reports a clean tree and exits 0.
+A clean scan and an inert rule are indistinguishable by exit code.
+
+So a run that depends on the rule asserts the terms arrived:
+
+```bash
+python3 tools/leak_scan.py --require-deny-names 1
+```
+
+CI passes exactly that, and every run now prints `deny terms loaded: N hostname
+term(s), M name term(s)` so the gate's strength is visible rather than assumed.
+See [`docs/leak-scan-provisioning.md`](docs/leak-scan-provisioning.md) for the
+Actions secret that supplies the terms, and for where the rule does not apply
+(fork pull requests cannot receive a secret).
 
 Exit status is meaningful: `0` clean, `1` findings, `2` the scan could not be
 trusted. Fixtures that must contain deliberate violations are allowlisted by

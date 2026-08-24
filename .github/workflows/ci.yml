@@ -16,6 +16,45 @@ jobs:
   # stdlib-only, so it needs no install step and reports before anything slower
   # has finished. It is a separate job so its verdict is a named check rather
   # than a step buried inside another one.
+  #
+  # WHY THE DENY LIST ARRIVES FROM A SECRET AND NOT FROM THE TREE. Four of the
+  # gate's five rules need no configuration. The fifth, `deny-name`, needs the
+  # employee names it is looking for -- and those names are themselves the
+  # confidential data. Committing them would publish the thing the rule exists to
+  # protect, and committing hashes of them would too: human names are low-entropy
+  # and trivially enumerable against a hash. So `tools/leak_scan.toml` keeps
+  # `names = []` with the comment explaining why, and the terms arrive at scan
+  # time from a file outside the tree.
+  #
+  # The file is written into RUNNER_TEMP rather than the workspace, deliberately:
+  # the scanner enumerates the tree with `git ls-files`, so a deny list inside the
+  # checkout would be a file the gate could scan and a contributor could commit.
+  #
+  # WHY `--require-deny-names 1` IS NOT OPTIONAL HERE. Until this was wired up the
+  # job ran with no deny file at all, so `deny-name` compiled zero patterns and
+  # matched nothing -- for months, reporting green the whole time. The obvious fix
+  # (point the scanner at a secret) does not close it, because the failure repeats
+  # the moment the secret is unset, emptied or malformed: a *missing* deny file
+  # raises, but an empty file, a bare `[deny]` table and `names = []` all load
+  # silently with zero names. An unset secret writes an empty file, the path
+  # exists, the missing-file guard never fires, and the rule is inert again behind
+  # a green check. Exit code alone cannot distinguish that from a working gate.
+  # The flag asserts a positive count of loaded name terms, so the job fails on
+  # the emptiness itself rather than reporting a clean scan.
+  #
+  # THE FORK LIMITATION, STATED RATHER THAN DISCOVERED. Actions secrets are not
+  # available to `pull_request` runs from forks. Once this repository is public,
+  # `deny-name` will therefore NOT fire on fork contributions, and the job says so
+  # in an annotation rather than failing them -- a fork PR cannot supply the
+  # secret and failing it would block every outside contribution. That is
+  # acceptable against the threat model: the risk this rule addresses is a
+  # maintainer copying code across from the private tree and bringing a name with
+  # it, which is an in-repo branch push by someone with write access, and those
+  # runs do receive the secret. It is written down because a rule that silently
+  # does not apply on one trigger is exactly how the original gap was born.
+  #
+  # Provisioning -- the secret's name, the TOML shape it holds, and how to
+  # reconstruct it -- is in docs/leak-scan-provisioning.md. No name appears there.
   leak-scan:
     runs-on: ubuntu-latest
     steps:
@@ -23,8 +62,26 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.11"
+      - name: Write the out-of-tree deny list
+        env:
+          DENY_TOML: ${{ secrets.LEAK_SCAN_DENY_TOML }}
+        # printf rather than echo: echo interprets backslashes in some shells, and
+        # a mangled TOML document would fail as a parse error rather than as the
+        # missing-secret it actually was.
+        run: printf '%s' "$DENY_TOML" > "$RUNNER_TEMP/leak-scan-deny.toml"
       - name: Internal identifier leak scan
-        run: python3 tools/leak_scan.py
+        env:
+          LEAK_SCAN_DENY_FILE: ${{ runner.temp }}/leak-scan-deny.toml
+          # True only for a pull_request from a fork. On push this is false, so a
+          # branch push is always held to the full gate.
+          IS_FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
+        run: |
+          if [ "$IS_FORK_PR" = "true" ]; then
+            echo "::warning title=deny-name is not in force on this run::Actions secrets are unavailable to pull_request runs from forks, so the deny-name rule has no terms here and cannot fire. The other four rules ran. See the comment above the leak-scan job."
+            python3 tools/leak_scan.py
+          else
+            python3 tools/leak_scan.py --require-deny-names 1
+          fi
 
   lint:
     runs-on: ubuntu-latest

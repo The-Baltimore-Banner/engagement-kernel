@@ -62,7 +62,7 @@ contract: engagement-kernel-input 1.0.0
 directory: <delivery>
 
 FAIL  reader               9 rows
-        COLUMN_TYPE_MISMATCH reader column=reader_id rows=9: column 'reader_id' is int64, the contract declares string. The value is not coerced: coercing is how a label becomes a number and a date becomes nothing
+        COLUMN_TYPE_MISMATCH reader column=reader_id rows=9: column 'reader_id' is int64, the contract declares string. Cast it to string in the query or job that writes this file, and look at what the cast does to the values before you trust it -- a string column that will not cast cleanly is carrying something the contract has no field for, and the fix is upstream rather than a cast. The validator will not coerce it for you: coercing is how a label becomes a number and a date becomes nothing, silently, in the direction that keeps the pipeline running
 PASS  reader_event         26 rows
 PASS  content              10 rows
 PASS  subscription_span    16 rows
@@ -292,7 +292,7 @@ directory: <delivery>
 
 PASS  reader               9 rows
 FAIL  reader_event         26 rows
-        COLUMN_TYPE_MISMATCH reader_event column=engagement_time_seconds rows=26: column 'engagement_time_seconds' is int64, the contract declares double. The value is not coerced: coercing is how a label becomes a number and a date becomes nothing
+        COLUMN_TYPE_MISMATCH reader_event column=engagement_time_seconds rows=26: column 'engagement_time_seconds' is int64, the contract declares double. Cast it to double in the query or job that writes this file, and look at what the cast does to the values before you trust it -- a string column that will not cast cleanly is carrying something the contract has no field for, and the fix is upstream rather than a cast. The validator will not coerce it for you: coercing is how a label becomes a number and a date becomes nothing, silently, in the direction that keeps the pipeline running
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
@@ -320,7 +320,7 @@ directory: <delivery>
 
 PASS  reader               9 rows
 FAIL  reader_event         26 rows
-        TIMESTAMP_NOT_TIMEZONE_AWARE reader_event column=event_ts rows=26: column 'event_ts' is a timezone-naive timestamp (timestamp[us]); the contract declares timestamp[us, tz=UTC]. A naive instant silently inherits whichever zone the producing system used, which is exactly the day-boundary defect this contract refuses
+        TIMESTAMP_NOT_TIMEZONE_AWARE reader_event column=event_ts rows=26: column 'event_ts' is a timezone-naive timestamp (timestamp[us]); the contract declares timestamp[us, tz=UTC]. Attach the zone the producing system actually stored these instants in -- for most warehouses that is UTC -- at the point you write the file. Do NOT localise them to the timezone you declared as the day boundary: the engine applies that itself, so doing it here shifts every instant twice, and the second shift is invisible because the column then looks correct. If you do not know which zone the source stored, that is the defect, and guessing it here is how it stops being findable. A naive instant inherits whichever zone the producing system happened to use, which is exactly the day-boundary error this contract exists to refuse
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
@@ -627,7 +627,7 @@ directory: <delivery>
 PASS  reader               9 rows
 PASS  reader_event         26 rows
 FAIL  content              10 rows
-        COLUMN_TYPE_MISMATCH content column=sections rows=10: column 'sections' is string, the contract declares list<item: string>. The value is not coerced: coercing is how a label becomes a number and a date becomes nothing
+        COLUMN_TYPE_MISMATCH content column=sections rows=10: column 'sections' is string, the contract declares list<item: string>. Cast it to list<item: string> in the query or job that writes this file, and look at what the cast does to the values before you trust it -- a string column that will not cast cleanly is carrying something the contract has no field for, and the fix is upstream rather than a cast. The validator will not coerce it for you: coercing is how a label becomes a number and a date becomes nothing, silently, in the direction that keeps the pipeline running
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
 PASS  email_open           7 rows
@@ -851,7 +851,7 @@ PASS  reader               9 rows
 PASS  reader_event         26 rows
 PASS  content              10 rows
 FAIL  subscription_span    16 rows
-        COLUMN_TYPE_MISMATCH subscription_span column=start_ts rows=16: column 'start_ts' is string, the contract declares timestamp[us, tz=UTC]. The value is not coerced: coercing is how a label becomes a number and a date becomes nothing
+        COLUMN_TYPE_MISMATCH subscription_span column=start_ts rows=16: column 'start_ts' is string, the contract declares timestamp[us, tz=UTC]. Cast it to timestamp[us, tz=UTC] in the query or job that writes this file, and look at what the cast does to the values before you trust it -- a string column that will not cast cleanly is carrying something the contract has no field for, and the fix is upstream rather than a cast. The validator will not coerce it for you: coercing is how a label becomes a number and a date becomes nothing, silently, in the direction that keeps the pipeline running
 PASS  email_click          7 rows
 PASS  email_open           7 rows
 PASS  community_action     7 rows
@@ -1098,7 +1098,7 @@ directory: <delivery>
 
 PASS  reader               9 rows
 FAIL  reader_event         absent
-        MISSING_REQUIRED_TABLE reader_event: reader_event.parquet is required by the contract and is not in the delivery
+        MISSING_REQUIRED_TABLE reader_event: reader_event.parquet is required by the contract and is not in the delivery. Its grain: One row per reader event. Unique on (event_id). Note what the fix is *not*: the manifest's availability mechanism covers the three optional inputs only, so there is no way to declare a required input absent. Either the file is produced, or the delivery cannot conform yet -- and the second is a real answer, reached by narrowing the window to a period the input covers or by concluding this deployment is not ready. docs/contract-reference.md has the field list
 PASS  content              10 rows
 PASS  subscription_span    16 rows
 PASS  email_click          7 rows
@@ -1141,7 +1141,7 @@ $ echo $?  ->  2
 contract: engagement-kernel-input 1.0.0
 directory: <delivery>
 
-MANIFEST manifest.json is missing required key 'day_boundary_timezone'
+MANIFEST manifest.json is missing required key 'day_boundary_timezone'. It declares which timezone defines a day, as an IANA name. It moves every event into day and week bins, so the two plausible answers -- your editorial timezone and UTC -- put evening activity on different days. Owned by whoever owns editorial reporting. There is no default: start from examples/manifest-template.json, which ships every required key with its answer left open, and see docs/declarations-questionnaire.md for the question and who owns it
 
 no table was checked: the manifest declares what to check against
 $ echo $?  ->  2
@@ -1176,7 +1176,7 @@ $ echo $?  ->  2
 contract: engagement-kernel-input 1.0.0
 directory: <delivery>
 
-MANIFEST manifest.json is missing required key 'week_anchor'
+MANIFEST manifest.json is missing required key 'week_anchor'. It declares which weekday anchors a week and at which end, as {'weekday': ..., 'position': 'week_starts_on'|'week_ends_on'}. Both conventions are in live use and they differ by up to six days. Owned by whoever owns editorial reporting. There is no default: start from examples/manifest-template.json, which ships every required key with its answer left open, and see docs/declarations-questionnaire.md for the question and who owns it
 
 no table was checked: the manifest declares what to check against
 $ echo $?  ->  2
@@ -1194,7 +1194,7 @@ $ echo $?  ->  2
 contract: engagement-kernel-input 1.0.0
 directory: <delivery>
 
-MANIFEST manifest.json is missing required key 'article_view'
+MANIFEST manifest.json is missing required key 'article_view'. It declares which content types and event kinds count as reading an article, plus a definition_id that travels with the answer. It changes every view-based feature. Owned by the newsroom, not by engineering. There is no default: start from examples/manifest-template.json, which ships every required key with its answer left open, and see docs/declarations-questionnaire.md for the question and who owns it
 
 no table was checked: the manifest declares what to check against
 $ echo $?  ->  2
@@ -1229,7 +1229,7 @@ $ echo $?  ->  2
 contract: engagement-kernel-input 1.0.0
 directory: <delivery>
 
-MANIFEST manifest.json is missing required key 'scored_population'
+MANIFEST manifest.json is missing required key 'scored_population'. It declares which subscription states are entitled, and therefore who is fit and scored at all. Two decisions in one: mapping your billing states onto the contract's vocabulary is an engineering job, but deciding which of them are scored is a commercial one, and the scores do not record which was chosen. There is no default: start from examples/manifest-template.json, which ships every required key with its answer left open, and see docs/declarations-questionnaire.md for the question and who owns it
 
 no table was checked: the manifest declares what to check against
 $ echo $?  ->  2

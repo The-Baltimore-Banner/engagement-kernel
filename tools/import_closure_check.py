@@ -38,8 +38,10 @@ Run it directly. It prints what it did and exits non-zero with a named reason.
 
 from __future__ import annotations
 
+import contextlib
 import importlib
 import importlib.util
+import io
 import pkgutil
 import sys
 import tomllib
@@ -226,6 +228,37 @@ def _run_the_engagement_lane() -> str:
     )
 
 
+def _run_the_adopter_checks() -> str:
+    """Lint the worked mapping and run the oracle, with every vendor import blocked.
+
+    These are the two commands an adopter runs against what their coding agent
+    produced, so they are exactly the commands that must not need a cloud SDK to
+    have been installed for some other reason. Cheap to run and worth running for
+    real: resolving the console script proves the module imports, and proves
+    nothing about whether the tool works.
+    """
+    import tempfile
+
+    from engagement_kernel.contract import mapping, oracle, oracle_demo
+
+    example = REPO_ROOT / "examples" / "mapping"
+    document = mapping.load_mapping_document(example / mapping.MAPPING_FILENAME)
+    report = mapping.lint_mapping(document, bundle_root=example / "adapter")
+    if report.errors:
+        raise AssertionError(f"the worked mapping does not lint:\n{report.render()}")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        with contextlib.redirect_stdout(io.StringIO()):
+            oracle_demo.build(tmp)
+        cases = oracle.load_cases(Path(tmp) / oracle.CASES_FILENAME)
+        result = oracle.run_cases(cases, tmp, min_negative=oracle.DEFAULT_MIN_NEGATIVE_CASES)
+    if not result.passed:
+        raise AssertionError(f"the oracle demo does not hold:\n{result.render()}")
+
+    counts = ", ".join(f"{k}={v}" for k, v in report.outcome_counts.items())
+    return f"mapping lint ok ({counts}); oracle cases={len(result.outcomes)} all as declared"
+
+
 def main() -> int:
     sys.meta_path.insert(0, _Blocker())
     try:
@@ -233,6 +266,7 @@ def main() -> int:
         scripts = _resolve_console_scripts()
         tables = _run_the_build()
         lane_summary = _run_the_engagement_lane()
+        adopter_summary = _run_the_adopter_checks()
     except BlockedImport as exc:
         print(f"IMPORT CLOSURE FAILED: {exc}", file=sys.stderr)
         return EXIT_VIOLATION
@@ -249,9 +283,10 @@ def main() -> int:
         print(f"  {entry}")
     print(f"demo build           : {tables}")
     print(f"engagement lane      : {lane_summary}")
+    print(f"adopter checks       : {adopter_summary}")
     print(
         "import closure holds: no cloud SDK was reachable, the intermediate build ran, and "
-        "the engagement lane fit and scored a model"
+        "the engagement lane fit and scored a model, and the adopter-facing checks ran"
     )
     return EXIT_OK
 

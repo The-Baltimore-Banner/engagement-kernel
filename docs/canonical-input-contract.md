@@ -19,8 +19,39 @@ not map, is in [live-kernel-mapping.md](live-kernel-mapping.md).
 
 ## What a delivery is
 
-One directory. Seven Parquet files -- four required, three optional -- and a
-`manifest.json`. Validate it:
+One directory. Seven Parquet files -- **four required, three optional** -- and a
+`manifest.json`.
+
+Read that split before you plan an export, because it decides whether you can
+start at all. Four inputs are the floor. The other three are declared present or
+absent, and **a newsroom with no app, no comments product and no email newsletter
+can run this engine today.**
+
+<!-- input-shape:begin -->
+The four you must produce:
+
+* **`reader`** -- The reader registry.
+* **`reader_event`** -- Web and app reading activity, one row per event, with the instant it happened.
+* **`content`** -- The content dimension: what each piece of content is and which sections it belongs to.
+* **`subscription_span`** -- Subscription state as a history of intervals, so a reader's status can be resolved as of any historical date.
+
+The three you may declare absent:
+
+| optional input | feature block | what a run without it loses |
+| --- | --- | --- |
+| `email_click` | `email_cadence` | The loyalty block, whose one signal is how many of the last four weeks the reader clicked an email in. Habit shows up here and nowhere else: reading volume cannot distinguish a reader who returns weekly from one who arrived once and read a great deal. Clusters stay meaningful without it, and the returning-reader distinction gets weaker. |
+| `email_open` | `deliverability` | Nothing in the model. Opens are deliberately not a model feature -- machine opens inflate them and cannot be cleaned out, so an open says a message reached a reachable inbox and nothing about interest. This input exists for reachability reporting, in its own table and its own block precisely so that 'opens are never a feature' is structural rather than a promise. Omit it and the model is unchanged. |
+| `community_action` | `community` | The community block: how many community actions the reader took in the window, and on how many distinct days. This is the clearest contribution signal in the model, so a deployment without it distinguishes heavy readers from participants less sharply. It is also the block most newsrooms will not have, which is why its absence is a first-class declaration rather than an obstacle. |
+<!-- input-shape:end -->
+
+An absent input is *declared*, with a reason -- `not_deployed` when you will never
+have it, `not_yet_launched` with a floor date when the product is newer than your
+analysis window -- and the engine answers by selecting a named alternate feature
+set, recorded in the run report. **Nothing is filled with zeros.** That is the
+whole reason absence is a declaration rather than an omission, and it is stated
+again under [Optional inputs are absent, not zero](#the-three-properties-that-shape-the-contract).
+
+Validate a delivery:
 
 ```bash
 engagement-kernel-validate path/to/delivery

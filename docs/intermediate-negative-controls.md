@@ -376,7 +376,7 @@ article_view.content_types must name at least one content type
 **Why it refuses.** The definition has to travel with the data, so a published number can be traced to the definition it was produced under.
 
 ```
-manifest.json is missing required key 'article_view'
+manifest.json is missing required key 'article_view'. It declares which content types and event kinds count as reading an article, plus a definition_id that travels with the answer. It changes every view-based feature. Owned by the newsroom, not by engineering. There is no default: start from examples/manifest-template.json, which ships every required key with its answer left open, and see docs/declarations-questionnaire.md for the question and who owns it
 ```
 
 ### A delivery whose manifest declares no day-boundary timezone

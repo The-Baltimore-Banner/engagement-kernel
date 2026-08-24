@@ -188,3 +188,64 @@ def resolve_feature_set(
         outcomes.append(BlockOutcome(block=block, source_table=table.name, supported=True))
 
     return FeatureSetPlan(feature_set_id=feature_set_id(dropped), outcomes=tuple(outcomes))
+
+
+# --- what an adopter loses, rendered rather than restated --------------------
+
+#: One sentence per optional feature block, saying what a run without it cannot
+#: produce. Written here rather than in a document because a newsroom decides
+#: whether to adopt this on the strength of these three sentences, and a table of
+#: them maintained by hand in prose is a table that goes stale the first time a
+#: block changes. ``render_optional_input_table`` emits the markdown; the doc
+#: tests assert the emitted rows are what the documents actually carry, and that
+#: every block declared in the contract has an entry here.
+LOSS_BY_BLOCK: dict[str, str] = {
+    "email_cadence": (
+        "The loyalty block, whose one signal is how many of the last four weeks the "
+        "reader clicked an email in. Habit shows up here and nowhere else: reading "
+        "volume cannot distinguish a reader who returns weekly from one who arrived "
+        "once and read a great deal. Clusters stay meaningful without it, and the "
+        "returning-reader distinction gets weaker."
+    ),
+    "deliverability": (
+        "Nothing in the model. Opens are deliberately not a model feature -- machine "
+        "opens inflate them and cannot be cleaned out, so an open says a message "
+        "reached a reachable inbox and nothing about interest. This input exists for "
+        "reachability reporting, in its own table and its own block precisely so that "
+        "'opens are never a feature' is structural rather than a promise. Omit it and "
+        "the model is unchanged."
+    ),
+    "community": (
+        "The community block: how many community actions the reader took in the "
+        "window, and on how many distinct days. This is the clearest contribution "
+        "signal in the model, so a deployment without it distinguishes heavy readers "
+        "from participants less sharply. It is also the block most newsrooms will not "
+        "have, which is why its absence is a first-class declaration rather than an "
+        "obstacle."
+    ),
+}
+
+
+def render_optional_input_table() -> str:
+    """The optional inputs and what each one's absence costs, as a markdown table.
+
+    Rows come from the contract's own table definitions, so an input added to or
+    removed from the contract changes this table without anybody remembering to.
+    """
+    lines = [
+        "| optional input | feature block | what a run without it loses |",
+        "| --- | --- | --- |",
+    ]
+    for table in OPTIONAL_TABLES:
+        loss = LOSS_BY_BLOCK.get(table.feature_block, "UNDOCUMENTED")
+        lines.append(f"| `{table.name}` | `{table.feature_block}` | {loss} |")
+    return "\n".join(lines)
+
+
+def render_required_input_list() -> str:
+    """The required inputs and their one-line purpose, as a markdown list."""
+    lines = []
+    for table in REQUIRED_TABLES:
+        first_sentence = table.purpose.split(". ")[0].rstrip(".")
+        lines.append(f"* **`{table.name}`** -- {first_sentence}.")
+    return "\n".join(lines)

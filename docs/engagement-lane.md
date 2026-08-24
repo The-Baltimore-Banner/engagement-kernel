@@ -228,6 +228,24 @@ is what somebody reads before deciding to rebuild one of these.
 
 <!-- census:end -->
 
+### The vocabulary, mapped
+
+Every name changed, because the contract's vocabulary is not one publisher's. The
+mapping is short enough to read, and worth reading before comparing an output table
+here against one from the source system.
+
+| Source | Here | Note |
+|---|---|---|
+| the subscriber id, the vendor id, the person id | `reader_id` | Three columns became one. The contract has exactly one reader id at one declared grain, so there is nothing left to reconcile between them. |
+| the pre-bucketed event date | `local_date` | Produced by the intermediate build, in the one declared timezone. The contract *refuses* this column on input, which is the asymmetry that stops a day being bucketed twice. |
+| the cleaned section | `section` | |
+| the unknown-section sentinel | `__unresolved__` | Same role, different spelling; the guard pattern was renamed with it, or the rule would have matched nothing. |
+| subscriber type, the three type booleans, entitlement type | `state`, `payer_type` | Spine metadata, never features. The publisher-specific taxonomy is gone; see below. |
+| the entitlement-active flag and window days | `partial_window_flag`, `entitled_days_in_window` | Resolved from state history rather than from a separate span table. |
+| the five comment counts | `posts_created`, `replies_created`, `likes_given`, `dislikes_given`, `flags_given` | Every one is an action the reader *performed*. The contract has no received-side kind, which makes that structural rather than a convention. |
+| the community site name | `site_id` | Opaque, and summed across. |
+| the per-channel prefixes `web_`/`app_` | derived from the contract's channel enum | Identical strings today, and derived rather than written out — so a channel added to the contract gets features instead of being silently absent from every window count. |
+
 ### Whole subsystems dropped
 
 * **The Athena serving job, the warehouse kernel source, the serving DDL, writer,

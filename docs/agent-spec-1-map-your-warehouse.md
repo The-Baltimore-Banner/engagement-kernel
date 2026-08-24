@@ -174,11 +174,18 @@ answers.
 engagement-kernel-validate <delivery>
 
 # 2. Is the mapping complete, consistent and traceable?
-engagement-kernel-lint-mapping <dir> --adapter-bundle <adapter-dir> --warnings-as-errors
+engagement-kernel-lint-mapping <dir> --adapter-bundle <adapter-dir>
 
 # 3. Do the broken variants fail for the reasons they predict?
 engagement-kernel-check-oracle <case-set-dir>
 ```
+
+Warnings are not defects. The lint warns on every declared absence and every
+gap, because those are the claims it cannot adjudicate — the worked example emits
+two and is correct. `--warnings-as-errors` exists for a pipeline that wants a
+sign-off enforced; it is the wrong default for a first run, and an agent told to
+drive the warning count to zero will start converting declared absences into
+invented data.
 
 ### What the mapping lint checks
 

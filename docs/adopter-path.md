@@ -106,17 +106,28 @@ engagement-kernel-engagement-lane run /tmp/cohort \
     --output-dir /tmp/cohort-out
 ```
 
-That fits the engagement model, selects a cluster count, freezes the fit and
-scores every complete week. It prints the resolved declarations before it does any
-work — the week anchor, the day boundary, the article-view definition, the scored
+**This one takes a few minutes.** On 400 readers it runs for around four
+minutes and will use every core you have, with no progress output in between —
+every candidate cluster count is re-screened on many perturbed panels, which is
+the expensive part and is deliberate. It has not hung.
+
+It fits the engagement model, selects a cluster count, freezes the fit and scores
+every complete week. It prints the resolved declarations before it does any work —
+the week anchor, the day boundary, the article-view definition, the scored
 population — so a run against the wrong ones is visible at the top of the log
 rather than inferred from the output afterwards.
 
-Expect it to **refuse to publish**. The interpretability gate fails until a person
-has reviewed the clusters and named them, which is the intended default rather
-than a bug: a cluster nobody can describe is not a segment, and the gate exists so
-that shipping one takes a deliberate act. `--interpretability-reviewed` is that
-act, and it is not for a first run.
+Expect the last line of the gate report to say it **will not publish**:
+
+```
+model_quality  interpretability_reviewed  False  no recorded interpretability review
+```
+
+That is the intended default, not a failure. The tables are written — you can read
+the clusters, the profiles and the per-week scores — and the run is marked
+unpublishable until a person has looked at the clusters and named them. A cluster
+nobody can describe is not a segment, so shipping one has to be a deliberate act.
+`--interpretability-reviewed` is that act, and it is not for a first run.
 
 ## 4. Map your warehouse onto the contract
 
@@ -147,9 +158,17 @@ your agent's context:
 
 ```bash
 engagement-kernel-validate <your-delivery>
-engagement-kernel-lint-mapping <your-mapping-dir> --adapter-bundle <your-adapter> --warnings-as-errors
+engagement-kernel-lint-mapping <your-mapping-dir> --adapter-bundle <your-adapter>
 engagement-kernel-check-oracle <your-case-set>
 ```
+
+**Read the warnings; do not try to eliminate them.** The lint warns on every
+declared absence and on every gap, and those warnings are not defects — declaring
+an input absent is the supported answer. They mark the claims no check can
+adjudicate, addressed to a reviewer rather than to your agent. Our own worked
+example emits two and is correct. There is a `--warnings-as-errors` flag for a CI
+pipeline that wants a human sign-off enforced, and it is the wrong default for a
+first run.
 
 Read [what the checks cannot check](agent-spec-1-map-your-warehouse.md#what-the-checks-cannot-check)
 before you treat three green commands as an answer. They prove your mapping is
@@ -185,16 +204,24 @@ shape.
 
 **A person who reads the clusters.** See step 3 on the interpretability gate.
 
-A first run against real data wants a narrow sweep and few draws, to see the
-shape before paying for a freeze:
+The defaults are production settings and expensive on purpose: every candidate
+cluster count is re-screened on many perturbed panels, which is `draws × seeds`
+clustering fits per candidate. A first run against real data can narrow the sweep
+to see the shape before paying for a freeze:
 
 ```bash
 engagement-kernel-engagement-lane run <delivery> --bucket-map <map> \
     --k-min 3 --k-max 6 --seeds 3 --perturbation-draws 3
 ```
 
-The defaults are production settings and expensive on purpose: every candidate
-cluster count is re-screened on many perturbed panels.
+**Expect a narrow sweep to report `champion k: none` fairly often, and read that
+as information rather than breakage.** Surviving the selection screens is the bar;
+with few seeds and few draws a genuinely stable cluster count can fail to clear
+it, and the run says so and freezes nothing rather than publishing a fit it
+cannot stand behind. `k_selection.parquet` records why each candidate was
+rejected. If a narrow sweep finds nothing, widen it before concluding anything
+about your data — on the demo cohort, the defaults find a champion where
+`--seeds 3 --perturbation-draws 3` does not.
 
 ---
 
@@ -233,3 +260,4 @@ you hit one that does not tell you what to do, that is a defect worth reporting.
 | [intermediate-tables.md](intermediate-tables.md) | the seven daily aggregates, and four derivations where the obvious rewrite is wrong |
 | [engagement-lane.md](engagement-lane.md) | what the model publishes, and the guards on what may become a feature |
 | [adopter-first-contact-messages.md](adopter-first-contact-messages.md) | the four failures you are most likely to hit first |
+| [adopter-path-rehearsal.md](adopter-path-rehearsal.md) | what broke when this path was last walked end to end, and what is still unproven |

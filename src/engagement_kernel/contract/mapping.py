@@ -895,6 +895,15 @@ class MappingReport:
         n_warn = len(self.warnings)
         if self.passed(warnings_are_errors=warnings_are_errors):
             verdict = f"PASS: every contract field is accounted for ({n_warn} warning(s))"
+        elif n_err == 0:
+            # Reachable only under --warnings-as-errors. "FAIL: 0 error(s)" on its
+            # own reads like a bug in the linter, and the distinction is the point:
+            # nothing here is malformed, and something here needs a person.
+            verdict = (
+                f"FAIL under --warnings-as-errors: 0 error(s), {n_warn} warning(s). The "
+                "mapping is structurally sound. Every warning above marks a claim this "
+                "check cannot adjudicate and a reviewer must"
+            )
         else:
             verdict = f"FAIL: {n_err} error(s), {n_warn} warning(s)"
         lines.append(verdict)

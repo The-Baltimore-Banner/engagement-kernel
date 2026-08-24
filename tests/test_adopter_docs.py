@@ -31,13 +31,14 @@ ADOPTER_PATH = DOCS / "adopter-path.md"
 QUESTIONNAIRE = DOCS / "declarations-questionnaire.md"
 AGENT_SPEC = DOCS / "agent-spec-1-map-your-warehouse.md"
 MESSAGES = DOCS / "adopter-first-contact-messages.md"
+REHEARSAL = DOCS / "adopter-path-rehearsal.md"
 CONTRACT_DOC = DOCS / "canonical-input-contract.md"
 TEMPLATE = REPO_ROOT / "examples" / "manifest-template.json"
 
 SHAPE_BEGIN = "<!-- input-shape:begin -->"
 SHAPE_END = "<!-- input-shape:end -->"
 
-ADOPTER_DOCS = [ADOPTER_PATH, QUESTIONNAIRE, AGENT_SPEC, MESSAGES]
+ADOPTER_DOCS = [ADOPTER_PATH, QUESTIONNAIRE, AGENT_SPEC, MESSAGES, REHEARSAL]
 
 
 def _between(text: str, begin: str, end: str) -> str:
@@ -291,3 +292,15 @@ def test_anchors_into_the_readme_resolve(path: Path) -> None:
 def test_the_documents_only_name_commands_that_exist(name: str) -> None:
     scripts = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert f"engagement-kernel-{name} =" in scripts
+
+
+def test_the_rehearsal_does_not_present_itself_as_the_walkthrough() -> None:
+    """The acceptance criterion says an author's walkthrough does not count.
+
+    A rehearsal log sitting beside the adopter path is exactly the document that
+    could later be mistaken for the evidence, so it says what it is not, in its
+    own first paragraph, where a reader will meet it before its findings.
+    """
+    head = re.sub(r"\s+", " ", REHEARSAL.read_text(encoding="utf-8")[:1400]).replace("**", "")
+    assert "This is not that." in head
+    assert "author" in head

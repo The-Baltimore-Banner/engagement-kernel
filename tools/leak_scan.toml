@@ -50,3 +50,19 @@ and ticket-key rules still apply, so this file cannot be used to smuggle one in.
 """
 paths = ['^tools/leak_scan\.toml$']
 rules = ["deny-hostname", "deny-name"]
+
+[[allowlist]]
+description = """
+Negative controls for the commit-message scan. This file asserts
+that a violation in a commit message is refused, so it has to contain the
+violations it expects to catch -- an invented hostname, an invented account and
+ARN, an invented ticket key. All four values are synthetic and match no real
+resource.
+
+`deny-name` is deliberately NOT waived here. Its terms are the confidential
+ones, so a file that could hold a real employee name past the gate is exactly
+what must not exist; the test proves that rule with a fabricated term supplied
+through a temporary deny file instead.
+"""
+paths = ['^tests/test_commit_message_scan\.py$']
+rules = ["deny-hostname", "aws-account", "aws-arn", "internal-ticket"]

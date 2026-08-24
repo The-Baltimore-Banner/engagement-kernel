@@ -29,6 +29,11 @@ dependencies = [
   "pandas>=2.2.0",
   "pyarrow>=16.0.0",
   "scikit-learn>=1.4.0",
+  # Declared explicitly although scikit-learn already requires it. The engagement
+  # lane calls scipy.optimize directly for the assignment problem behind cluster
+  # matching, and depending on it transitively means a future scikit-learn that
+  # dropped it would break this package with an error pointing somewhere else.
+  "scipy>=1.11.0",
 ]
 
 [project.optional-dependencies]
@@ -46,6 +51,8 @@ dev = [
 engagement-kernel-validate = "engagement_kernel.contract.validate:main"
 engagement-kernel-demo-dataset = "engagement_kernel.contract.demo:main"
 engagement-kernel-build-intermediate = "engagement_kernel.intermediate.cli:main"
+engagement-kernel-engagement-lane = "engagement_kernel.engagement.cli:main"
+engagement-kernel-cohort = "engagement_kernel.engagement.cohort:main"
 
 [project.urls]
 Homepage = "https://github.com/The-Baltimore-Banner/engagement-kernel"

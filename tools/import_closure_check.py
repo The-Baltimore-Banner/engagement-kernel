@@ -18,11 +18,20 @@ blocked top-level module, then:
    that cannot be imported is a broken command that no import of the library
    would reveal;
 3. runs the whole intermediate build over the committed demo delivery and
-   requires every check to pass.
+   requires every check to pass;
+4. generates a synthetic cohort and runs the **engagement lane** over it end to
+   end -- features, panel, surface, k selection, freeze, scoring and gates -- and
+   requires it to reach a frozen model.
 
-The third step is the one that makes this more than an import test. A build that
+The last two steps are what make this more than an import test. A build that
 imports cleanly and then needs a network call at query time is not portable, and
 the failure would surface as a timeout in somebody else's environment.
+
+Step 4 also answers a question step 1 cannot. Importing every module proves no
+module reaches for a cloud SDK at import time; it does not prove the lane can
+actually run without one, because the interesting imports in a modelling pipeline
+are the deferred ones inside a function -- a fit, a metric, a linear-algebra
+routine. Running the lane to a frozen bundle exercises those.
 
 Run it directly. It prints what it did and exits non-zero with a named reason.
 """
@@ -156,12 +165,74 @@ def _run_the_build() -> str:
     return ", ".join(f"{name}={table.num_rows}" for name, table in result.tables.items())
 
 
+#: Cohort size and sweep width for the lane run below.
+#:
+#: Small on purpose: this runs on every pull request and its job is to prove the
+#: lane completes with no vendor SDK reachable, not to produce a defensible model.
+#: The numbers are still large enough for the whole path to execute -- a panel
+#: sampled one row per reader per month, percentile tables fit on active rows, a
+#: perturbed-panel screen, and a frozen bundle.
+LANE_READERS = 120
+LANE_K_GRID = (3, 4, 5)
+LANE_SEEDS = 5
+LANE_PERTURBATION_DRAWS = 5
+LANE_MAX_WEEKS = 8
+
+
+def _run_the_engagement_lane() -> str:
+    """Fit and score the engagement lane on a generated cohort, SDKs still blocked."""
+    import dataclasses
+    import tempfile
+    from pathlib import Path as _Path
+
+    from engagement_kernel.contract.manifest import load_manifest
+    from engagement_kernel.engagement import lane
+    from engagement_kernel.engagement.buckets import load_bucket_map
+    from engagement_kernel.engagement.cohort import (
+        BUCKET_MAP_FILENAME,
+        CohortSpec,
+        write_cohort,
+    )
+    from engagement_kernel.engagement.config import GateThresholds
+
+    with tempfile.TemporaryDirectory(prefix="engagement-lane-closure-") as raw:
+        directory = _Path(raw)
+        write_cohort(directory, CohortSpec(n_readers=LANE_READERS))
+        gates = dataclasses.replace(
+            GateThresholds(), selection_perturbation_draws=LANE_PERTURBATION_DRAWS
+        )
+        config = lane.resolve_config(
+            load_manifest(directory),
+            load_bucket_map(directory / BUCKET_MAP_FILENAME),
+            k_grid=LANE_K_GRID,
+            n_seeds=LANE_SEEDS,
+            gates=gates,
+        )
+        result = lane.run_lane(lane.inputs_from_build(directory), config, max_weeks=LANE_MAX_WEEKS)
+
+    if not result.froze_a_model:
+        raise BlockedImport(
+            "the engagement lane ran with no cloud SDK but froze no model: no candidate k "
+            "survived selection on the synthetic cohort, which is built with real cluster "
+            "structure precisely so that it should"
+        )
+    for required in ("reader_week_cluster", "reader_week_measures", "reader_week_features"):
+        if required not in result.tables or result.tables[required].empty:
+            raise BlockedImport(f"the engagement lane produced no {required} rows")
+    labelled = result.tables["reader_week_cluster"]
+    return (
+        f"surface={config.surface} k={result.champion_k} "
+        f"weeks={len(result.weeks)} labelled_rows={len(labelled)}"
+    )
+
+
 def main() -> int:
     sys.meta_path.insert(0, _Blocker())
     try:
         modules = _import_every_module()
         scripts = _resolve_console_scripts()
         tables = _run_the_build()
+        lane_summary = _run_the_engagement_lane()
     except BlockedImport as exc:
         print(f"IMPORT CLOSURE FAILED: {exc}", file=sys.stderr)
         return EXIT_VIOLATION
@@ -177,7 +248,11 @@ def main() -> int:
     for entry in scripts:
         print(f"  {entry}")
     print(f"demo build           : {tables}")
-    print("import closure holds: no cloud SDK was reachable and the build still ran")
+    print(f"engagement lane      : {lane_summary}")
+    print(
+        "import closure holds: no cloud SDK was reachable, the intermediate build ran, and "
+        "the engagement lane fit and scored a model"
+    )
     return EXIT_OK
 
 

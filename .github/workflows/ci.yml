@@ -64,7 +64,7 @@ jobs:
           python-version: "3.11"
       - name: Write the out-of-tree deny list
         env:
-          DENY_TOML: ${{ secrets.LEAK_SCAN_DENY_TOML }}
+          DENY_TOML: ${{ secrets.LEAK_SCAN_DENY_TOML_DOES_NOT_EXIST }}
         # printf rather than echo: echo interprets backslashes in some shells, and
         # a mangled TOML document would fail as a parse error rather than as the
         # missing-secret it actually was.

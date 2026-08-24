@@ -26,6 +26,51 @@ def test_workflow_runs_on_pull_requests() -> None:
     assert "pull_request:" in _text()
 
 
+def test_the_leak_scan_job_supplies_the_out_of_tree_deny_list() -> None:
+    """The wiring that makes `deny-name` more than decoration.
+
+    Text assertions, and coarse for it -- but the regression they catch is the exact
+    state this repository shipped in for months: the job running with no deny file,
+    so the rule compiled zero patterns and matched nothing behind a green check.
+    """
+    text = _text()
+    assert "LEAK_SCAN_DENY_TOML" in text, "the leak-scan job no longer reads the deny secret"
+    assert "LEAK_SCAN_DENY_FILE" in text, "the scanner is not told where the deny list is"
+    assert "RUNNER_TEMP" in text, (
+        "the deny list must be written outside the workspace: the scanner enumerates "
+        "the tree with git ls-files, so one inside the checkout is scannable and "
+        "committable"
+    )
+
+
+def test_the_leak_scan_job_asserts_the_deny_list_is_not_empty() -> None:
+    """Without this the fix reverts silently the moment the secret is unset.
+
+    A missing deny file raises; an empty one does not. An unset secret writes an
+    empty file, so exit code alone cannot tell a working gate from an inert one.
+    """
+    assert "--require-deny-names 1" in _text(), (
+        "the leak-scan job no longer asserts a positive count of loaded name terms"
+    )
+
+
+def test_the_fork_limitation_is_stated_next_to_the_job() -> None:
+    """A rule that silently does not apply on one trigger is how the gap was born."""
+    text = _text()
+    assert "fork" in text.lower()
+    assert "::warning" in text, "a fork run must say deny-name is not in force, not stay quiet"
+
+
+def test_provisioning_is_written_down_and_names_nothing() -> None:
+    """A secret only one person can rebuild is a gate that expires with them."""
+    doc = WORKFLOW.parents[2] / "docs" / "leak-scan-provisioning.md"
+    assert doc.is_file(), "the deny-list provisioning note is missing"
+    text = doc.read_text(encoding="utf-8")
+    assert "LEAK_SCAN_DENY_TOML" in text
+    assert "[deny]" in text
+    assert "gh secret set" in text
+
+
 def test_workflow_runs_every_required_check() -> None:
     text = _text()
     for fragment in (

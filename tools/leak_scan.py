@@ -355,6 +355,49 @@ def _resolve_root(explicit: str | None) -> Path:
     return Path(completed.stdout.decode().strip()).resolve()
 
 
+def assert_deny_terms_loaded(config: Config, required_names: int) -> None:
+    """Refuse to report a verdict when the deny list carried too few name terms.
+
+    This exists because of a specific, silent failure mode, and the shape of it is
+    worth stating exactly: a **missing** deny file already raises, but a deny file
+    that exists and yields no names does not. An empty file, a file holding a bare
+    ``[deny]`` table, and a file with ``names = []`` all load cleanly with zero
+    names -- so an unset or fumbled secret writes an empty file, the path exists,
+    the missing-file guard never fires, and :data:`RULE_DENY_NAME` compiles zero
+    patterns and matches nothing while the job reports a clean scan.
+
+    Exit code alone cannot tell that state apart from a working gate. Both are 0.
+
+    So the count is asserted rather than assumed, and the failure is a
+    :class:`ScanError` -- exit 2, "the scan did not complete" -- rather than a
+    finding. That is the honest classification: nothing was found to be wrong with
+    the tree, and the scan was not in a position to say so.
+    """
+    if required_names <= 0:
+        return
+    loaded = len(config.names)
+    if loaded < required_names:
+        raise ScanError(
+            f"the deny list loaded {loaded} name term(s), below the {required_names} "
+            f"this run requires, so {RULE_DENY_NAME} would compile no patterns and "
+            "match nothing. This is NOT a clean tree: the rule aimed at the likeliest "
+            "leak was inert. A deny file that is absent raises on its own; one that "
+            "exists and is empty, holds a bare [deny] table, or sets names = [] does "
+            f"not -- so check that ${DENY_FILE_ENV_VAR} points at a file with a "
+            "populated [deny].names list"
+        )
+
+
+def describe_deny_terms(config: Config) -> str:
+    """How much deny material a run actually loaded.
+
+    Printed on every run, pass or fail. A gate that reports only its verdict cannot
+    be used to tell a strong configuration from a weak one, and the whole defect
+    this guards against was a rule that looked green because it was doing nothing.
+    """
+    return f"{len(config.hostnames)} hostname term(s), {len(config.names)} name term(s)"
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="leak_scan",
@@ -376,6 +419,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="scan only these repo-relative paths instead of the whole tree",
     )
     parser.add_argument(
+        "--require-deny-names",
+        type=int,
+        default=0,
+        metavar="N",
+        help=(
+            "refuse to report a verdict unless the deny list loaded at least N name "
+            "terms. Default 0 (off), so a local run without the out-of-tree deny file "
+            "still works; CI passes 1, because there the alternative is a green job "
+            "with the deny-name rule silently inert"
+        ),
+    )
+    parser.add_argument(
         "--ignore-allowlist",
         action="store_true",
         help="diagnostic: apply every rule to every file, ignoring the allowlist",
@@ -390,6 +445,10 @@ def main(argv: list[str] | None = None) -> int:
         config_path = Path(args.config) if args.config else root / DEFAULT_CONFIG_RELPATH
         raw_deny_file = args.deny_file or os.environ.get(DENY_FILE_ENV_VAR) or None
         config = load_config(config_path, Path(raw_deny_file) if raw_deny_file else None)
+        # Before scanning, not after: a verdict this run is not entitled to give is
+        # not worth spending the scan to produce, and failing here keeps the reason
+        # ("the gate was inert") from being buried under a clean-tree report.
+        assert_deny_terms_loaded(config, args.require_deny_names)
         relpaths = list(args.paths) if args.paths else enumerate_paths(root)
         findings, notes, scanned = scan_paths(
             root, relpaths, config, ignore_allowlist=args.ignore_allowlist
@@ -406,6 +465,7 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"leak-scan: OK no findings in {scanned} file(s) (config: {', '.join(config.sources)})"
         )
+        print(f"leak-scan: deny terms loaded: {describe_deny_terms(config)}")
         return 0
 
     for finding in findings[:MAX_REPORTED_FINDINGS]:
@@ -420,6 +480,7 @@ def main(argv: list[str] | None = None) -> int:
         f"leak-scan: {len(findings)} finding(s) in {len(files)} file(s) "
         f"of {scanned} scanned; rules fired: {', '.join(rules_fired)}"
     )
+    print(f"leak-scan: deny terms loaded: {describe_deny_terms(config)}")
     print("leak-scan: matched values are not printed on purpose; open the file and line above.")
     return 1
 

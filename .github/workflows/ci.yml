@@ -59,6 +59,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          # Full history: the commit-message step below reads `git log --all`,
+          # and the default shallow clone would hand it a handful of commits
+          # while reporting a clean scan over the rest.
+          fetch-depth: 0
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.11"
@@ -81,6 +86,28 @@ jobs:
             python3 tools/leak_scan.py
           else
             python3 tools/leak_scan.py --require-deny-names 1
+          fi
+      # The step above scans FILE CONTENT AT HEAD -- leak_scan.py
+      # enumerates with `git ls-files --cached`. It has never seen a commit
+      # message, while this repository's convention deliberately routes ticket
+      # refs into messages and PR descriptions. Once this repo is public, a name
+      # or an internal hostname in a message cannot be removed without
+      # rewriting history, so it has to be refused on the branch push instead.
+      #
+      # `internal-ticket` is waived for messages only (DEC-155, an accepted
+      # decision); the tree scan above still refuses a ticket key in a file. The
+      # scan proves it is not vacuous with a synthetic sentinel before reporting
+      # any verdict -- see tools/scan_commit_messages.py.
+      - name: Internal identifiers in commit messages
+        env:
+          LEAK_SCAN_DENY_FILE: ${{ runner.temp }}/leak-scan-deny.toml
+          IS_FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
+        run: |
+          if [ "$IS_FORK_PR" = "true" ]; then
+            echo "::warning title=deny-name is not in force on this run::Actions secrets are unavailable to pull_request runs from forks, so the deny-name rule has no terms for the commit-message scan either. The pattern rules ran."
+            python3 tools/scan_commit_messages.py
+          else
+            python3 tools/scan_commit_messages.py --require-deny-names 1
           fi
 
   lint:

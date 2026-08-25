@@ -34,7 +34,11 @@ looking at the click unit is looking in the wrong place.
 
 from __future__ import annotations
 
+import dataclasses
+import math
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from types import MappingProxyType
 
 from engagement_kernel.contract import spec
 from engagement_kernel.contract.manifest import Manifest, ScoredPopulation
@@ -58,8 +62,72 @@ SURFACE_INTENSITY = "intensity"
 JOINT_SURFACE_REQUIRED_INPUTS: tuple[str, ...] = ("email_click", "community_action")
 
 
+#: Where the cross-algorithm bars this package ships actually came from.
+#:
+#: **They are one newsroom's measurement, not a property of k.** They were derived
+#: on two freezes of a single publisher's 9-feature subscriber panel (labelled
+#: ``v2_1_joint_freeze`` and ``v2_3_targeted_freeze`` in the system this ports
+#: from), 4,571 rows each, as the 95th percentile of a covariance-matched Gaussian
+#: null pooled over a five-matrix corpus of the same feature space.
+#:
+#: Chance-level agreement between two algorithms that share an objective depends on
+#: the row count, on the dimensionality and on the population's actual correlation
+#: structure -- not on k alone. The same rule run on a six-feature panel from the
+#: same publisher gave bars 0.10 higher. So these values do not transport, and an
+#: adopter who keeps them is screening against a number nobody measured for them,
+#: which is exactly what :meth:`GateThresholds.cross_algorithm_bar` refuses to do
+#: for an undeclared k. Derive your own with
+#: ``tools/derive_cross_algorithm_bars.py`` and declare them in a gates file.
+SHIPPED_BAR_PROVENANCE = (
+    "95th percentile of a covariance-matched Gaussian null, pooled over a "
+    "five-matrix 9-feature corpus from one publisher's subscriber panel "
+    "(4,571 rows per freeze). One newsroom's measurement, not a property of k: "
+    "chance agreement depends on n, on dimensionality and on the population's own "
+    "correlation structure. Derive your own with "
+    "tools/derive_cross_algorithm_bars.py."
+)
+
+#: How an undeclared k is declared. Named once so the refusal message, the gates
+#: file loader and the documentation cannot drift apart.
+BAR_DECLARATION_HINT = (
+    "declare it in the [gates.cross_algorithm_ari_by_k] table of a gates file and "
+    "pass the file with --gates, or derive the whole table on your own panel with "
+    "tools/derive_cross_algorithm_bars.py"
+)
+
+
 class LaneConfigError(ValueError):
     """The lane was asked to run without something it cannot guess."""
+
+
+def freeze_bars(bars: Mapping[int, float]) -> Mapping[int, float]:
+    """Validate a bar table and return it read-only.
+
+    Read-only matters more than it looks. The field was a plain ``dict`` on a
+    frozen dataclass, so ``gates.cross_algorithm_ari_by_k[12] = 0.29`` silently
+    succeeded -- the only way to reach an undeclared k that existed, and a way that
+    mutates state shared by every holder of that instance. Two runs in one process
+    could disagree about their own gates with nothing recording it.
+    """
+    frozen: dict[int, float] = {}
+    for raw_k, raw_bar in bars.items():
+        if isinstance(raw_k, bool) or not isinstance(raw_k, int):
+            raise LaneConfigError(
+                f"cross-algorithm bars are keyed by the number of clusters, so {raw_k!r} is "
+                "not a key it can have"
+            )
+        if raw_k < 2:
+            raise LaneConfigError(
+                f"a bar is declared for k={raw_k}, but a partition needs at least two clusters"
+            )
+        bar = float(raw_bar)
+        if not math.isfinite(bar) or not -1.0 <= bar <= 1.0:
+            raise LaneConfigError(
+                f"the bar for k={raw_k} is {bar}, which is outside the range an adjusted "
+                "Rand index can take (-1 to 1)"
+            )
+        frozen[raw_k] = bar
+    return MappingProxyType(dict(sorted(frozen.items())))
 
 
 @dataclass(frozen=True)
@@ -71,9 +139,18 @@ class GateThresholds:
     stage that selected the models they gate, which is not a gate -- it is a
     description of what the run happened to produce.
 
-    Every default below is a starting point for a deployment that has not yet
-    measured its own distribution, and the run reports the realised value beside
-    the threshold so the first look at real data is also the prompt to set it.
+    **Every default below is one deployment's number, and yours to replace.** The
+    run reports the realised value beside the threshold, so the first look at real
+    data is also the prompt to set it -- and the setting is a file the deployment
+    owns rather than a source edit: see :mod:`engagement_kernel.engagement.gate_config`
+    and ``docs/gate-configuration.md``. Until that file existed this docstring
+    described an intention with no mechanism behind it, which is a slower way of
+    prescribing than saying so.
+
+    Two of these are not starting points in the same sense. ``selection_rng_seed``
+    and the perturbation geometry are reproducibility settings rather than
+    thresholds: moving them changes which panels the verdict is averaged over, not
+    how demanding it is.
     """
 
     #: Median pairwise adjusted Rand index across seeds. Below this the clusters
@@ -86,7 +163,15 @@ class GateThresholds:
     #: -- and that chance level *falls* as k rises, so one flat number is the wrong
     #: shape as well as the wrong level. A k with no entry is refused rather than
     #: screened against a number nobody measured for it.
-    cross_algorithm_ari_by_k: dict[int, float] = field(
+    #:
+    #: **The values below are not the method; the derivation is.** They are one
+    #: newsroom's measurement on a stated panel -- see
+    #: :data:`SHIPPED_BAR_PROVENANCE` -- and they are shipped as a working default
+    #: rather than as a recommendation. Per-k-ness is the portable lesson. The
+    #: levels are not, because chance agreement depends on the panel: the same
+    #: derivation on a six-feature panel from the same publisher came out about
+    #: 0.10 higher at every k. Derive your own.
+    cross_algorithm_ari_by_k: Mapping[int, float] = field(
         default_factory=lambda: {
             3: 0.46,
             4: 0.42,
@@ -130,6 +215,39 @@ class GateThresholds:
     selection_survival_floor: float = 0.50
     selection_rng_seed: int = 20260824
 
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self, "cross_algorithm_ari_by_k", freeze_bars(self.cross_algorithm_ari_by_k)
+        )
+        for name, value in (
+            ("seed_ari", self.seed_ari),
+            ("centroid_distinctness_corr", self.centroid_distinctness_corr),
+            ("tiny_cluster_floor", self.tiny_cluster_floor),
+            ("major_cluster_share", self.major_cluster_share),
+            ("topic_coverage_floor", self.topic_coverage_floor),
+            ("t4_retention", self.t4_retention),
+            ("t4_profile_similarity", self.t4_profile_similarity),
+            ("selection_survival_floor", self.selection_survival_floor),
+            ("selection_perturbation_row_fraction", self.selection_perturbation_row_fraction),
+        ):
+            if not math.isfinite(value) or not 0.0 <= value <= 1.0:
+                raise LaneConfigError(
+                    f"{name} is {value}; every threshold here is a share or a correlation "
+                    "and has to sit between 0 and 1"
+                )
+        if self.selection_perturbation_draws < 1:
+            raise LaneConfigError(
+                "selection_perturbation_draws is "
+                f"{self.selection_perturbation_draws}; a survival rate needs at least one "
+                "perturbed panel to be a rate at all"
+            )
+        if self.selection_perturbation_row_fraction <= 0.0:
+            raise LaneConfigError(
+                "selection_perturbation_row_fraction is "
+                f"{self.selection_perturbation_row_fraction}, so every perturbed panel "
+                "would be the unperturbed one and the survival rate would measure nothing"
+            )
+
     def cross_algorithm_bar(self, k: int) -> float:
         try:
             return self.cross_algorithm_ari_by_k[k]
@@ -137,9 +255,19 @@ class GateThresholds:
             raise LaneConfigError(
                 f"no cross-algorithm agreement bar declared for k={k}; declared bars cover "
                 f"k={sorted(self.cross_algorithm_ari_by_k)}. Screening k={k} would compare "
-                "it against a number nobody measured for it -- declare a bar or leave k "
-                "out of the sweep"
+                "it against a number nobody measured for it, which is the one thing this "
+                f"screen must not do. To screen k={k}, {BAR_DECLARATION_HINT}. To leave it "
+                "unscreened, take it out of the candidate sweep"
             ) from None
+
+    def with_bars(self, bars: Mapping[int, float]) -> GateThresholds:
+        """The same thresholds with the bar table replaced.
+
+        The supported way to reach a k this package ships no bar for. It returns a
+        new instance rather than editing this one, so a caller cannot change the
+        gates another caller is already screening against.
+        """
+        return dataclasses.replace(self, cross_algorithm_ari_by_k=bars)
 
 
 @dataclass(frozen=True)
@@ -240,8 +368,18 @@ class LaneConfig:
             )
         if not self.k_grid:
             raise LaneConfigError("k_grid is empty, so no candidate model would be screened")
+        # Sorted and deduplicated, so a grid built from a command line or a config
+        # file describes the same sweep however it was written. The sweep itself
+        # already sorts; normalising here is what makes `describe` and the version
+        # string stable.
+        object.__setattr__(self, "k_grid", tuple(sorted(set(int(k) for k in self.k_grid))))
         if min(self.k_grid) < 2:
-            raise LaneConfigError("k_grid contains a k below 2")
+            raise LaneConfigError(
+                f"k_grid is {list(self.k_grid)} and a partition needs at least two clusters. "
+                "Two is allowed and is a legitimate answer for a small or sharply split "
+                "audience -- it needs a cross-algorithm bar declared for k=2, which no "
+                "candidate k gets for free"
+            )
         for k in self.k_grid:
             # Fail here rather than midway through a sweep that has already spent
             # minutes fitting the candidates before it.

@@ -129,6 +129,28 @@ unpublishable until a person has looked at the clusters and named them. A cluste
 nobody can describe is not a segment, so shipping one has to be a deliberate act.
 `--interpretability-reviewed` is that act, and it is not for a first run.
 
+**The rest of that gate report is yours to set, and this is the moment to know it.**
+Every threshold it prints — the seed-stability floor, the agreement bar, the cluster
+size floor, the survival floor — carries a default, and every one of those defaults is
+a number this repository's authors measured on their own subscribers. They are shipped
+so a first run produces something, not because they are right for your audience. The
+report prints the realised value beside each threshold precisely so your own first run
+tells you where yours sit.
+
+One of them cannot honestly be inherited at all: the cross-algorithm agreement bar
+depends on your row count, your feature count and your readers' own correlation
+structure, and `tools/derive_cross_algorithm_bars.py` measures it on your panel. The
+same goes for the number of clusters — the shipped sweep is 3 to 8 because that is
+what one newsroom swept, and two clusters is a legitimate answer.
+
+```bash
+engagement-kernel-engagement-lane gates-template my-gates.toml
+```
+
+[gate-configuration.md](gate-configuration.md) is the whole of it: the file format,
+the derivation tool, how to choose a candidate range, and which numbers in the engine
+are deliberately *not* yours to set.
+
 ## 4. Map your warehouse onto the contract
 
 **This is the hard step, and the only one where we cannot help directly.**
@@ -194,7 +216,7 @@ engagement-kernel-engagement-lane run <your-delivery> \
     --bucket-map <your-section-buckets.json> --output-dir <out>
 ```
 
-Two things you supply that the engine will not invent:
+Three things you supply that the engine will not invent:
 
 **A section bucket map.** Your section taxonomy is yours — however many sections
 it has, named whatever your CMS calls them. The map from sections to topic buckets
@@ -204,15 +226,28 @@ shape.
 
 **A person who reads the clusters.** See step 3 on the interpretability gate.
 
-The defaults are production settings and expensive on purpose: every candidate
-cluster count is re-screened on many perturbed panels, which is `draws × seeds`
-clustering fits per candidate. A first run against real data can narrow the sweep
-to see the shape before paying for a freeze:
+**Your own thresholds, eventually.** Not for the first run — the defaults will get
+you a result to look at. But the result is judged against another newsroom's numbers
+until you pass `--gates`, and one of those numbers does not transport at all. See
+[gate-configuration.md](gate-configuration.md).
+
+Two kinds of flag here, and they are worth keeping apart, because conflating them is
+how an adopter comes away believing the thresholds belong to the engine.
+
+`--seeds` and `--perturbation-draws` buy a **cheaper verdict on the same screens**.
+The defaults are production settings and expensive on purpose: every candidate cluster
+count is re-screened on many perturbed panels, which is `draws × seeds` clustering
+fits per candidate. Lowering them makes the answer noisier, never more permissive, and
+a first run against real data wants them low:
 
 ```bash
 engagement-kernel-engagement-lane run <delivery> --bucket-map <map> \
     --k-min 3 --k-max 6 --seeds 3 --perturbation-draws 3
 ```
+
+`--gates` and `--k-grid` set **what your deployment considers good enough**. They
+change the verdict itself. `--k-grid` takes any set of counts from two upwards and
+does not have to be contiguous, given a bar declared for each one.
 
 **Expect a narrow sweep to report `champion k: none` fairly often, and read that
 as information rather than breakage.** Surviving the selection screens is the bar;
@@ -222,6 +257,11 @@ cannot stand behind. `k_selection.parquet` records why each candidate was
 rejected. If a narrow sweep finds nothing, widen it before concluding anything
 about your data — on the demo cohort, the defaults find a champion where
 `--seeds 3 --perturbation-draws 3` does not.
+
+A different refusal reads similarly and means something else: `no cross-algorithm
+agreement bar declared for k=N`. That is not your data failing a screen, it is the
+engine declining to judge a candidate against a number nobody measured for it. The
+message says how to declare one.
 
 ---
 
@@ -259,5 +299,6 @@ you hit one that does not tell you what to do, that is a defect worth reporting.
 | [validator-negative-controls.md](validator-negative-controls.md) | every defect the validator catches, with its verbatim message |
 | [intermediate-tables.md](intermediate-tables.md) | the seven daily aggregates, and four derivations where the obvious rewrite is wrong |
 | [engagement-lane.md](engagement-lane.md) | what the model publishes, and the guards on what may become a feature |
+| [gate-configuration.md](gate-configuration.md) | setting the thresholds and the cluster count, and which numbers are deliberately not yours |
 | [adopter-first-contact-messages.md](adopter-first-contact-messages.md) | the four failures you are most likely to hit first |
 | [adopter-path-rehearsal.md](adopter-path-rehearsal.md) | what broke when this path was last walked end to end, and what is still unproven |

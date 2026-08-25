@@ -63,8 +63,9 @@ reported to the maintainers by opening a report through the repository's
 **Security** tab (GitHub private vulnerability reporting), which reaches the
 maintainers privately, or by contacting a maintainer directly through GitHub.
 
-This repository is pre-release and has no published contact address yet. A
-monitored address will be added here before the repository is made public.
+There is deliberately no mail address published here. Reports reach the
+maintainers through the Security tab or through a maintainer's GitHub profile; an
+unmonitored inbox listed here would look like a channel without being one.
 
 For **security vulnerabilities**, follow [SECURITY.md](SECURITY.md) rather than
 this section.

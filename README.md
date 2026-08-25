@@ -4,17 +4,17 @@ Portable engagement scoring and clustering machinery for a news organisation's
 subscriber and content data, built to run anywhere a directory of columnar files
 can be read.
 
-## Status: pre-release, not yet published
+## Status: pre-release
 
-**This repository is pre-release and not publicly available.** There is no
-release, no package on any index, and no stable interface. What is in place: the
-scaffold and CI gate, the canonical input contract and its validator, the daily
-intermediate build, and the engagement lane -- a weekly engagement score and a
-behavioural cluster per reader. The content-persona lane is not being built.
+**This repository is public, and pre-release.** There is no release, no package
+on any index, and no stable interface. What is in place: the scaffold and CI
+gate, the canonical input contract and its validator, the daily intermediate
+build, and the engagement lane -- a weekly engagement score and a behavioural
+cluster per reader. The content-persona lane is not being built.
 
 It **is** runnable end to end, on the synthetic data in `examples/` or on a
 delivery you produce, which is what [the adopter path](docs/adopter-path.md) is
-for. "Not published" is about distribution and interface stability, not about
+for. "Pre-release" is about distribution and interface stability, not about
 whether the engine works.
 
 Nothing here should be treated as a supported dependency. Interfaces, package
@@ -276,8 +276,10 @@ organisation's identifiers in the current tree.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Because this repository is pre-release
-and closed, external contributions are not being accepted yet.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Forks and pull requests are open. The
+interface is pre-release and moves without notice, so raise anything large before
+building it. The most useful contribution right now is a report from walking
+[the adopter path](docs/adopter-path.md) and saying where you stalled.
 
 ## Security
 

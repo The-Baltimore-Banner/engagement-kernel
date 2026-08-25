@@ -130,10 +130,11 @@ matters: the same file is a finding with a term loaded and invisible without one
 ## Where it does not apply
 
 **Fork pull requests.** Actions secrets are not available to `pull_request` runs
-from forks, so once this repository is public `deny-name` will not fire on fork
-contributions. The job emits a warning annotation saying so rather than failing
-them — a fork cannot supply the secret, and failing it would block every outside
-contribution.
+from forks, so `deny-name` does not fire on fork contributions. The job emits a
+warning annotation saying so rather than failing them — a fork cannot supply the
+secret, and failing it would block every outside contribution. This stopped being
+hypothetical when forking was enabled at publication; before that, no fork could
+exist and the branch was unreachable.
 
 That is acceptable against the threat model. The risk this rule addresses is a
 maintainer copying code across from the private tree and bringing a name with it,

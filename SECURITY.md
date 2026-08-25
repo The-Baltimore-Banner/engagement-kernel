@@ -2,10 +2,10 @@
 
 ## Supported use
 
-This repository is **pre-release and not yet published**. There is no release and
-no supported deployment path, so there is nothing here to run in production
-today. Reports are still welcome: it is cheaper to fix a design before the code
-ships than after.
+This repository is **public, and pre-release**. There is no release and no
+supported deployment path, so there is nothing here to run in production today.
+Reports are still welcome: it is cheaper to fix a design before the code ships
+than after.
 
 ## Reporting a vulnerability
 
@@ -21,10 +21,10 @@ Use GitHub's private vulnerability reporting:
    * steps to reproduce
    * impact, and any mitigation you are aware of
 
-This repository has no published security contact address yet. A monitored
-address will be added here before the repository is made public. Until then,
-private vulnerability reporting through the Security tab is the channel that
-reaches the maintainers.
+Private vulnerability reporting through the Security tab is the channel, and it
+is the only one. There is deliberately no mail address published here: an
+unmonitored inbox in a security policy is worse than no address at all, because
+it looks like a channel and silently is not.
 
 ## Reporting exposed internal material
 

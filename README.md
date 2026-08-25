@@ -82,6 +82,13 @@ engagement-kernel-check-oracle <dir>
   [`docs/engagement-lane.md`](docs/engagement-lane.md) covers what it publishes,
   the two guards that decide what may become a model feature, and -- in full --
   the census of what deliberately did not come across.
+  [`docs/gate-configuration.md`](docs/gate-configuration.md) is how a deployment
+  sets its own thresholds and its own candidate cluster counts, including the one
+  threshold that cannot honestly be inherited -- the cross-algorithm agreement bar,
+  which depends on your row count, your dimensionality and your readers' own
+  correlation structure, and which `tools/derive_cross_algorithm_bars.py` measures
+  on your panel. It also says which numbers in the lane are deliberately *not*
+  configurable, and which are prescriptions still waiting to be lifted.
   [`docs/engagement-lane-parity.md`](docs/engagement-lane-parity.md) says why
   parity is stated structurally rather than numerically, including the email day
   shift that makes numeric email parity unavailable by construction.

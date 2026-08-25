@@ -15,6 +15,12 @@ structure at all -- and that chance level *falls* as k rises. A single flat numb
 inherited from a specification is the wrong shape as well as the wrong level: it
 certifies high k too easily and refuses low k too readily.
 
+The bars this package ships are one newsroom's derivation on one panel, and chance
+agreement depends on the row count, the dimensionality and the population's own
+correlation structure. So they are a working default, not the method: derive your
+own with ``tools/derive_cross_algorithm_bars.py`` and declare them in a gates file.
+A k with no declared bar is refused either way.
+
 **Centroid distinctness.** Two clusters whose centroid profiles correlate above the
 threshold are one cluster reported twice.
 
@@ -52,6 +58,7 @@ import pandas as pd
 
 from engagement_kernel.engagement.assignment import median_pairwise_ari
 from engagement_kernel.engagement.config import GateThresholds
+from engagement_kernel.engagement.windows import TRAILING_WINDOW_DAYS, WEEK_BIN_COUNT
 
 #: z for a one-sided 95% bound.
 WILSON_Z = 1.645
@@ -90,6 +97,19 @@ def algorithm_agreement(labels_a: np.ndarray, labels_b: np.ndarray) -> float:
     from sklearn.metrics import adjusted_rand_score
 
     return float(adjusted_rand_score(labels_a, labels_b))
+
+
+def cross_algorithm_statistic(values: np.ndarray, k: int, *, n_seeds: int) -> float:
+    """Exactly the number the cross-algorithm screen compares against its bar.
+
+    Public because deriving the bar means measuring this statistic on panels with
+    no cluster structure, and a derivation that re-implements the statistic
+    calibrates something else. ``tools/derive_cross_algorithm_bars.py`` calls this;
+    a test asserts it returns what :func:`_run_screens` reports, so "the same code
+    path" is checked rather than asserted in a comment.
+    """
+    champion, _ = _kmeans_champion(values, k, n_seeds)
+    return algorithm_agreement(champion.labels_, _hierarchical_labels(values, k))
 
 
 def centroid_distinctness_violations(centroids: np.ndarray, threshold: float) -> int:
@@ -451,7 +471,10 @@ class TemporalComparison:
     weeks_apart: int
     #: Only a non-overlapping comparison is evidence. Adjacent weeks share 21 of
     #: their 28 window days, so their agreement is mechanically high whatever the
-    #: model does.
+    #: model does. The gap that makes them disjoint is the window's own width in
+    #: weeks, taken from :data:`~engagement_kernel.engagement.windows.WEEK_BIN_COUNT`
+    #: rather than written out again -- it was a bare 4 here and a bare 28 below,
+    #: which is the same prescription stated in three places and revisable in none.
     is_gate: bool
     overlap_caveat: str | None
 
@@ -470,17 +493,18 @@ def temporal_comparison(
         else pd.DataFrame()
     )
     caveat = None
-    if weeks_apart < 4:
-        shared = 28 - 7 * weeks_apart
+    days_per_week = TRAILING_WINDOW_DAYS // WEEK_BIN_COUNT
+    if weeks_apart < WEEK_BIN_COUNT:
+        shared = TRAILING_WINDOW_DAYS - days_per_week * weeks_apart
         caveat = (
-            f"the two windows share {shared} of 28 days, so this agreement is mechanically "
-            "inflated -- monitoring, not evidence"
+            f"the two windows share {shared} of {TRAILING_WINDOW_DAYS} days, so this "
+            "agreement is mechanically inflated -- monitoring, not evidence"
         )
     return TemporalComparison(
         retention=retention,
         transitions=transitions,
         n_rows=len(joined),
         weeks_apart=weeks_apart,
-        is_gate=weeks_apart >= 4,
+        is_gate=weeks_apart >= WEEK_BIN_COUNT,
         overlap_caveat=caveat,
     )

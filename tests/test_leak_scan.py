@@ -96,6 +96,31 @@ def test_ticket_key_is_detected(tmp_path: Path) -> None:
     assert "FAIL internal-ticket doc.md:2" in result.stdout
 
 
+def test_ticket_key_is_detected_underscored(tmp_path: Path) -> None:
+    """The form that used to pass a clean scan with the identifier present.
+
+    The rule required a hyphen, so an underscored key -- what a key becomes in a
+    filename, and filenames get pasted into prose -- matched nothing. A real
+    document reached a review carrying one behind a green gate.
+    """
+    underscored = FAKE_TICKET.replace("-", "_")
+    result = _scan_tmp(tmp_path, {"doc.md": f"see {underscored} for the finding\n"})
+    assert result.returncode == 1
+    assert "FAIL internal-ticket doc.md:1" in result.stdout
+
+
+def test_a_ticket_key_with_no_separator_is_not_matched(tmp_path: Path) -> None:
+    """The widening is one character, not a licence to match any digits after the prefix.
+
+    Recorded because the obvious next step -- making the separator optional -- would
+    flag a bare prefix followed by any number, and this repository has no way to
+    tell that from an ordinary token.
+    """
+    joined = FAKE_TICKET.replace("-", "")
+    result = _scan_tmp(tmp_path, {"doc.md": f"see {joined}\n"})
+    assert result.returncode == 0
+
+
 def test_ticket_key_is_detected_lowercase(tmp_path: Path) -> None:
     """Branch names carry the key in lowercase; a lowercase key leaks the same."""
     result = _scan_tmp(tmp_path, {"doc.md": f"branch feat/{FAKE_TICKET.lower()}-thing\n"})

@@ -149,7 +149,10 @@ engagement-kernel-engagement-lane gates-template my-gates.toml
 
 [gate-configuration.md](gate-configuration.md) is the whole of it: the file format,
 the derivation tool, how to choose a candidate range, and which numbers in the engine
-are deliberately *not* yours to set.
+are deliberately *not* yours to set. If you want the reasoning underneath -- why the
+cluster count is derived rather than chosen, and why that one bar cannot be inherited
+-- [clustering-methodology.md](clustering-methodology.md) is the method itself,
+written so you could implement it without this engine.
 
 ## 4. Map your warehouse onto the contract
 
@@ -300,5 +303,6 @@ you hit one that does not tell you what to do, that is a defect worth reporting.
 | [intermediate-tables.md](intermediate-tables.md) | the seven daily aggregates, and four derivations where the obvious rewrite is wrong |
 | [engagement-lane.md](engagement-lane.md) | what the model publishes, and the guards on what may become a feature |
 | [gate-configuration.md](gate-configuration.md) | setting the thresholds and the cluster count, and which numbers are deliberately not yours |
+| [clustering-methodology.md](clustering-methodology.md) | why the method is built this way, and how to reason about it against your own data |
 | [adopter-first-contact-messages.md](adopter-first-contact-messages.md) | the four failures you are most likely to hit first |
 | [adopter-path-rehearsal.md](adopter-path-rehearsal.md) | what broke when this path was last walked end to end, and what is still unproven |

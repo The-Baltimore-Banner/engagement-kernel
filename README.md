@@ -82,6 +82,12 @@ engagement-kernel-check-oracle <dir>
   [`docs/engagement-lane.md`](docs/engagement-lane.md) covers what it publishes,
   the two guards that decide what may become a model feature, and -- in full --
   the census of what deliberately did not come across.
+  [`docs/clustering-methodology.md`](docs/clustering-methodology.md) is the layer
+  underneath all of that: why the method is built this way -- why behaviour-only
+  inputs, why the number of clusters is derived rather than chosen, why an
+  instrumentation gap gets two different remedies depending on which kind it is,
+  and which of the numbers are the adopting newsroom's to set. It is written to be
+  reproducible without this engine.
   [`docs/gate-configuration.md`](docs/gate-configuration.md) is how a deployment
   sets its own thresholds and its own candidate cluster counts, including the one
   threshold that cannot honestly be inherited -- the cross-algorithm agreement bar,

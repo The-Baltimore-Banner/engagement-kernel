@@ -37,6 +37,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from engagement_kernel.engagement.config import GateThresholds
+
 PROMOTED_GROUP = "Promoted to configuration"
 FIXED_GROUP = "Deliberately fixed"
 DEFERRED_GROUP = "Deferred, with the reason"
@@ -283,3 +285,134 @@ def render_triage_into(document: str) -> str:
             f"{TRIAGE_END_MARKER}"
         )
     return document[:start] + triage_markdown() + document[end + len(TRIAGE_END_MARKER) :]
+
+
+# --- the gate census, rendered so no document has to retype a threshold -------
+
+GATES_BEGIN_MARKER = "<!-- gates:begin -->"
+GATES_END_MARKER = "<!-- gates:end -->"
+
+
+@dataclass(frozen=True)
+class Gate:
+    """One publication gate, named by the field that holds its level."""
+
+    #: Attribute on :class:`~engagement_kernel.engagement.config.GateThresholds`.
+    field: str
+    name: str
+    meaning: str
+
+
+#: The gates a methodology document has to describe, in the order it describes
+#: them. The *levels* are never written here -- they are read off
+#: ``GateThresholds`` at render time, so a prose table cannot drift from the code
+#: and nobody has to retype a number to keep a document current.
+#:
+#: This matters because it already went wrong. The document this renders into
+#: previously typed every level as a literal. One of them -- the flat
+#: cross-algorithm bar -- was retired and replaced by a per-k derivation, and the
+#: prose went on stating the retired number for seven weeks, because nothing
+#: connected the two.
+GATES: tuple[Gate, ...] = (
+    Gate(
+        field="seed_ari",
+        name="Seed stability",
+        meaning="Median pairwise agreement between fits of the same k from different "
+        "starting points. Below it, the groups are a property of where the fitting "
+        "started rather than of the readers.",
+    ),
+    Gate(
+        field="cross_algorithm_ari_by_k",
+        name="Cross-algorithm agreement",
+        meaning="Agreement between the production labeller and an independent second "
+        "algorithm at the same k. Per k, and derived on your own panel -- the one "
+        "threshold here that cannot be inherited. See section 9.3.",
+    ),
+    Gate(
+        field="centroid_distinctness_corr",
+        name="Centroid distinctness",
+        meaning="Correlation above which two cluster profiles are one cluster reported twice.",
+    ),
+    Gate(
+        field="tiny_cluster_floor",
+        name="Smallest cluster share",
+        meaning="Below it, a cluster is an incidental group rather than a segment.",
+    ),
+    Gate(
+        field="major_cluster_share",
+        name="Cluster persistence share",
+        meaning="The share at which a cluster must appear under every seed. Kept equal "
+        "to the floor above on purpose.",
+    ),
+    Gate(
+        field="t4_retention",
+        name="Temporal retention",
+        meaning="Share of readers keeping their label between two windows far enough "
+        "apart to share no days.",
+    ),
+    Gate(
+        field="t4_profile_similarity",
+        name="Temporal profile similarity",
+        meaning="Correlation between matched cluster profiles across the same gap.",
+    ),
+    Gate(
+        field="selection_survival_floor",
+        name="Selection survival",
+        meaning="One-sided lower bound the all-screens survival rate must clear across "
+        "perturbed panels. What makes the verdict reproducible rather than a property "
+        "of the one matrix a run assembled. See section 9.2.",
+    ),
+    Gate(
+        field="topic_coverage_floor",
+        name="Topic coverage",
+        meaning="Share of reading whose section resolves. Blocks the topic block alone, "
+        "not the whole run.",
+    ),
+)
+
+
+def _render_level(gates: GateThresholds, field: str) -> str:
+    """One gate's shipped level, formatted, never typed."""
+    value = getattr(gates, field)
+    if field == "cross_algorithm_ari_by_k":
+        low, high = min(value), max(value)
+        return (
+            f"per k: {len(value)} bars, {value[low]:g} at k={low} falling to "
+            f"{value[high]:g} at k={high}"
+        )
+    return f"{value:g}"
+
+
+def gate_table_markdown(gates: GateThresholds | None = None) -> str:
+    """The gates as a markdown table, levels read from the code.
+
+    Rendered rather than written, because a methodology document that retypes a
+    threshold becomes a second source of truth for it and the copy is the one
+    people read.
+    """
+    gates = gates or GateThresholds()
+    lines = [
+        GATES_BEGIN_MARKER,
+        "",
+        "| Gate | Field | This package's level | What it means |",
+        "|---|---|---|---|",
+    ]
+    lines.extend(
+        f"| {_cell(gate.name)} | `{gate.field}` | {_render_level(gates, gate.field)} | "
+        f"{_cell(gate.meaning)} |"
+        for gate in GATES
+    )
+    lines.extend(["", GATES_END_MARKER])
+    return "\n".join(lines)
+
+
+def render_gates_into(document: str) -> str:
+    """Replace the gate table in a document with a fresh render."""
+    start = document.find(GATES_BEGIN_MARKER)
+    end = document.find(GATES_END_MARKER)
+    if start < 0 or end < 0:
+        raise ValueError(
+            f"the document carries no gate table; expected {GATES_BEGIN_MARKER} and "
+            f"{GATES_END_MARKER}"
+        )
+    return document[:start] + gate_table_markdown() + document[end + len(GATES_END_MARKER) :]

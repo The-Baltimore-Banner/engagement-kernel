@@ -80,8 +80,15 @@ _TICKET_PREFIX = "BBA" + "1"
 # that an account id glued to a letter, as in "acct123456789012x", is missed.
 _ACCOUNT_RE = re.compile(rb"(?<![A-Za-z0-9])[0-9]{12}(?![A-Za-z0-9])")
 _ARN_RE = re.compile(re.escape(_ARN_MARKER).encode(), re.IGNORECASE)
+# The separator is a character class rather than a literal hyphen. It was a
+# hyphen, and a document carrying the underscored form of a ticket key passed a
+# clean scan with the identifier present -- the gate reported OK and the
+# reference was there. Underscored keys are not a hypothetical variant: they are
+# what a key becomes in a filename, and filenames get pasted into prose. A rule
+# that matches only the canonical spelling of an identifier is a rule that
+# catches careful references and misses careless ones, which is backwards.
 _TICKET_RE = re.compile(
-    rb"(?<![A-Za-z0-9])" + _TICKET_PREFIX.encode() + rb"-[0-9]+(?![0-9])",
+    rb"(?<![A-Za-z0-9])" + _TICKET_PREFIX.encode() + rb"[-_][0-9]+(?![0-9])",
     re.IGNORECASE,
 )
 

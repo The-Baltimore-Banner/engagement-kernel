@@ -5,10 +5,10 @@ this repository.
 
 ## Project status
 
-This repository is **pre-release and not yet published**. It has no release, no
-package on any index, and no stable interface. External contributions are not
-being accepted yet; the guide is written now so that the rules are in place
-before the code is.
+This repository is **public, and pre-release**. It has no release, no package on
+any index, and no stable interface, and it will change without notice until a
+first release is cut. Forks and pull requests are open; raise anything large
+before building it, because the ground may move under it.
 
 ## What must never land here
 

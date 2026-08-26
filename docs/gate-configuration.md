@@ -150,6 +150,11 @@ number. Two controls must pass before it emits anything: a positive control that
 statistic can see real structure at all, and a **held-out** negative control that the
 percentile transports to draws it was not derived from.
 
+The evidence file is written before those controls run and rewritten with their
+verdict afterwards, so a run that is refused, or killed partway through, still leaves
+the distributions it measured. `controls.status` in that file says which state it is
+in. Only the gates fragment waits for both controls to pass.
+
 `replicates * k * seeds` clustering fits per panel, and the hierarchical fit is
 quadratic in rows. Start at `--replicates 20` to see the shape; a bar you intend to
 freeze against wants 100.

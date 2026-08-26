@@ -20,11 +20,26 @@ argument for which one governs, so it is measured, not stated.
 *The controls gate the emission.* A derivation whose positive control fails must emit
 nothing, because a bar from an uncontrolled derivation is the same kind of number as
 the one it replaces.
+
+*A long run cannot be lost to something checkable at the start, and cannot be lost
+in full.* This is the one section here that exists because of an incident rather than
+a design argument: a forty-minute run derived every bar, passed the positive control,
+and then died on an import at its emit step, writing nothing. So two things are held.
+No import in the tool sits inside a function, checked against the syntax tree rather
+than against prose; and a run whose package cannot be imported is shown to stop before
+the compute by actually breaking the import in a subprocess, with the same invocation
+against a working package as the control.
 """
 
 from __future__ import annotations
 
+import ast
 import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
 
 import derive_cross_algorithm_bars as derive
 import numpy as np
@@ -221,7 +236,9 @@ def test_a_failing_control_emits_no_bar(tmp_path, monkeypatch, correlated: np.nd
     """The gate on the emission, exercised by making the positive control unpassable.
 
     Without this the controls are decoration: nothing would prove that a failure
-    actually stops the number from being written.
+    actually stops the number from being written. What a refused run *may* leave is
+    its measurements, so this asserts the absence of the fragment specifically rather
+    than the absence of the output directory.
     """
     monkeypatch.setattr(derive, "POSITIVE_CONTROL_ARI", 1.5)
     panel = _write_panel(tmp_path / "panel.csv", correlated)
@@ -240,7 +257,7 @@ def test_a_failing_control_emits_no_bar(tmp_path, monkeypatch, correlated: np.nd
         ]
     )
     assert code == 4
-    assert not out.exists(), "a bar was written despite a failed control"
+    assert not (out / derive.BARS_NAME).exists(), "a bar was written despite a failed control"
 
 
 # --- end to end --------------------------------------------------------------
@@ -283,3 +300,190 @@ def test_what_the_tool_emits_is_a_gates_file(tmp_path, correlated: np.ndarray) -
     # Both nulls recorded, so the judgement in the rule can be re-examined without
     # re-running anything.
     assert set(evidence["null_distributions"]) == set(derive.NULLS)
+
+
+# --- what a long run cannot lose ---------------------------------------------
+
+TOOL_PATH = Path(derive.__file__).resolve()
+REPO_SRC = TOOL_PATH.parents[1] / "src"
+
+
+def test_no_import_in_the_tool_is_deferred_into_a_function() -> None:
+    """Read the syntax tree, not the prose, and not the import's own line number.
+
+    The rule this holds is about *when* an import is first evaluated, and the thing
+    that made it expensive was that two of the three deferred imports were reached
+    only after the derivation had finished. Function-scope is the property that
+    allows that, so function-scope is what is banned -- a positional rule such as
+    "above ``run_cells``" would pass for an import moved one line up and still
+    deferred.
+
+    Stated as a whole-file ban rather than a ban on importing this package, because
+    the reason has nothing to do with which package it is. Anyone who later needs a
+    deferred import here has to argue with this test, which is the intent.
+    """
+    tree = ast.parse(TOOL_PATH.read_text())
+    deferred = [
+        f"{holder.name}() line {node.lineno}"
+        for holder in ast.walk(tree)
+        if isinstance(holder, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
+        for node in ast.walk(holder)
+        if isinstance(node, ast.Import | ast.ImportFrom)
+    ]
+    assert deferred == [], (
+        "these imports are first evaluated when their function runs, which for this "
+        f"tool can be after a run's entire compute budget is spent: {deferred}"
+    )
+
+
+def test_the_names_the_late_imports_provided_are_module_attributes() -> None:
+    """The complement to the syntax check: the names are actually there now."""
+    assert isinstance(derive.GATE_CONFIG_VERSION, int)
+    assert callable(derive.cross_algorithm_statistic)
+
+
+def _run_isolated_tool(
+    tmp_path, panel: str, pythonpath: str, *, where: str
+) -> subprocess.CompletedProcess:
+    """The tool run as its own process from a directory with no ``src`` beside it.
+
+    Copied rather than invoked in place, so ``REPO_ROOT / "src"`` -- the path the tool
+    puts on ``sys.path`` at import time -- does not exist. That is the state the real
+    incident was in: the checkout the run was launched from had been deleted, so the
+    only thing deciding whether the package could be imported was ``PYTHONPATH``.
+    """
+    binary_dir = tmp_path / where / "bin"
+    binary_dir.mkdir(parents=True)
+    copied = binary_dir / "derive.py"
+    shutil.copy(TOOL_PATH, copied)
+    assert not (tmp_path / where / "src").exists()
+
+    environment = dict(os.environ)
+    environment["PYTHONPATH"] = pythonpath
+    return subprocess.run(
+        [
+            sys.executable,
+            str(copied),
+            panel,
+            "--k-grid",
+            "2",
+            "--replicates",
+            "20",
+            "--seeds",
+            str(SEEDS),
+            "--jobs",
+            "1",
+        ],
+        capture_output=True,
+        text=True,
+        env=environment,
+        timeout=300,
+    )
+
+
+def test_a_run_that_cannot_import_the_package_stops_before_the_compute(
+    tmp_path, correlated: np.ndarray
+) -> None:
+    """Demonstrated by breaking the import, not inferred from where the line sits.
+
+    "The import is at the top of the file" is a claim about text. "The run refuses
+    before spending the compute" is a claim about behaviour, and only the second one
+    is what this ticket was about, so the second one is what is measured: the same
+    copied script, the same panel and the same argv, run twice, differing only in
+    whether ``engagement_kernel`` can be imported.
+
+    The control matters as much as the case. Without it, a tool that failed at
+    startup for some unrelated reason -- a typo, a missing flag -- would satisfy the
+    broken half and prove nothing.
+    """
+    panel = _write_panel(tmp_path / "panel.csv", correlated)
+
+    shadow = tmp_path / "shadow"
+    (shadow / "engagement_kernel").mkdir(parents=True)
+    (shadow / "engagement_kernel" / "__init__.py").write_text(
+        'raise ImportError("simulated: the package tree this run was launched from is gone")\n'
+    )
+    broken = _run_isolated_tool(tmp_path, panel, str(shadow), where="unimportable")
+
+    assert broken.returncode != 0
+    # First the property that matters: it stops before the first cell is computed.
+    # Asserted ahead of the message, so that restoring the deferred imports is caught
+    # here rather than on the wording of a refusal that never had to be reached.
+    assert "deriving:" not in broken.stdout, broken.stdout
+    assert "derived bars" not in broken.stdout, broken.stdout
+    assert "engagement_kernel is not importable" in broken.stderr
+    # It names the cause it was given rather than only its own summary of it.
+    assert "the package tree this run was launched from is gone" in broken.stderr
+
+    working = _run_isolated_tool(tmp_path, panel, str(REPO_SRC), where="importable")
+
+    assert working.returncode == 0, working.stderr
+    assert "deriving:" in working.stdout
+    assert "derived bars" in working.stdout
+
+
+def _derive_with_out(tmp_path, correlated: np.ndarray) -> tuple[str, Path]:
+    return _write_panel(tmp_path / "panel.csv", correlated), tmp_path / "out"
+
+
+def test_a_failing_control_still_leaves_what_the_run_measured(
+    tmp_path, monkeypatch, correlated: np.ndarray
+) -> None:
+    """A refusal to publish a bar is not a reason to discard the distributions.
+
+    The bar is withheld because it is uncertified. The null distributions behind it
+    are the same measurements either way, and they cost the whole run.
+    """
+    monkeypatch.setattr(derive, "POSITIVE_CONTROL_ARI", 1.5)
+    panel, out = _derive_with_out(tmp_path, correlated)
+    code = derive.main(
+        [panel, "--k-grid", "3", "--replicates", "20", "--seeds", str(SEEDS), "--out", str(out)]
+    )
+
+    assert code == 4
+    assert not (out / derive.BARS_NAME).exists()
+
+    evidence = json.loads((out / derive.EVIDENCE_NAME).read_text())
+    assert evidence["controls"]["status"] == "failed"
+    assert evidence["controls"]["positive"]["passed"] is False
+    # The measurements, not just the verdict.
+    assert set(evidence["null_distributions"]) == set(derive.NULLS)
+    assert evidence["bar_by_k"]["3"] > 0.0
+
+
+def test_a_run_that_dies_in_the_controls_still_leaves_what_it_measured(
+    tmp_path, monkeypatch, correlated: np.ndarray
+) -> None:
+    """The ordering, not just the failure path.
+
+    A control that *returns* a failure can be handled after the fact; a run that
+    dies, or is killed, cannot. So the evidence has to be on disk before the controls
+    are entered, and the only way to show it is there at that moment is to never let
+    the controls finish. ``controls.status`` marks the file as uncertified, so what a
+    crashed run leaves cannot be read as a derivation that passed.
+    """
+
+    def killed(*args, **kwargs):
+        raise RuntimeError("killed partway through the controls")
+
+    monkeypatch.setattr(derive, "positive_control", killed)
+    panel, out = _derive_with_out(tmp_path, correlated)
+    with pytest.raises(RuntimeError, match="killed partway"):
+        derive.main(
+            [panel, "--k-grid", "3", "--replicates", "20", "--seeds", str(SEEDS), "--out", str(out)]
+        )
+
+    evidence = json.loads((out / derive.EVIDENCE_NAME).read_text())
+    assert evidence["controls"] == {"status": derive.CONTROLS_NOT_RUN}
+    assert set(evidence["null_distributions"]) == set(derive.NULLS)
+    assert not (out / derive.BARS_NAME).exists()
+
+
+def test_a_run_without_out_writes_nothing(tmp_path, correlated: np.ndarray) -> None:
+    """The pre-write is bounded by ``--out``, so a look-only run stays look-only."""
+    panel = _write_panel(tmp_path / "panel.csv", correlated)
+    before = sorted(child.name for child in tmp_path.iterdir())
+    code = derive.main([panel, "--k-grid", "2", "--replicates", "20", "--seeds", str(SEEDS)])
+
+    assert code == 0
+    assert sorted(child.name for child in tmp_path.iterdir()) == before

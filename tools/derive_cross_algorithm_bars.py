@@ -99,6 +99,17 @@ Two controls, both of which must pass before a bar is emitted:
     percentile must clear the bar about 5% of the time. Measuring that rate on the
     replicates that defined the percentile would be circular and proves nothing.
 
+What a run leaves behind
+------------------------
+
+With ``--out``, the evidence file recording every distribution the run measured is
+written *before* the controls run and rewritten with their verdict afterwards. A run
+that fails a control still emits no gates fragment -- that refusal is the whole point
+of having controls -- but the distributions behind the refused bar cost the entire run
+to measure and are worth the same either way, so they survive. ``controls.status``
+says which state the file is in, so evidence left by a crashed or refused run cannot
+be mistaken for a certified derivation.
+
 Cost
 ----
 
@@ -145,6 +156,35 @@ os.environ.setdefault("MKL_NUM_THREADS", "2")
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
+# The package this tool calibrates, imported here rather than inside the three
+# functions that use it. Two of those three call sites are reached only after the
+# whole derivation has run: ``render_bars_toml`` is the last thing a successful run
+# does, and ``positive_control`` runs after ``run_cells``.
+#
+# The second one is worse than it looks, and it is measured rather than reasoned:
+# with ``--jobs`` above 1 the null replicates are computed in spawned workers, so
+# ``engagement_kernel.engagement.selection`` is still absent from the *parent*
+# process's ``sys.modules`` after ``run_cells(..., jobs=2)`` returns. The parent's
+# first evaluation of that import is the positive control, at the end.
+#
+# A derivation is a long single-shot run with no resume -- cost is
+# ``replicates * k * seeds`` fits per panel and the hierarchical fit is quadratic in
+# rows -- so an import that can first be evaluated at the end can cost the entire
+# run. One did: a 40-minute run derived every bar, passed the positive control, and
+# then died at the emit step because the checkout it had been launched from was
+# deleted while it ran, taking the ``src`` directory off ``sys.path`` with it.
+# Nothing was written. At module scope that same condition refuses at second zero.
+try:
+    from engagement_kernel.engagement.gate_config import GATE_CONFIG_VERSION  # noqa: E402
+    from engagement_kernel.engagement.selection import cross_algorithm_statistic  # noqa: E402
+except ImportError as exc:
+    raise SystemExit(
+        f"engagement_kernel is not importable, so this run would have failed at its "
+        f"emit step with the whole compute budget already spent. Refusing now instead: "
+        f"{exc}. This tool looks for the package in {REPO_ROOT / 'src'}; run it from a "
+        f"checkout whose src directory still exists, or install the package."
+    ) from exc
+
 NULLS = ("gaussian", "permute")
 GOVERNING_NULL = "gaussian"
 DEFAULT_QUANTILE = 0.95
@@ -160,6 +200,18 @@ SCALAR_BAR_SPREAD = 0.05
 #: this the percentile has not transported to fresh draws at all.
 HOLDOUT_MAX_CLEARANCE = 0.15
 POSITIVE_CONTROL_ARI = 0.95
+BARS_NAME = "cross_algorithm_bars.toml"
+EVIDENCE_NAME = "derivation_evidence.json"
+#: The ``controls.status`` an evidence file carries before the controls have run, so a
+#: file left behind by a crashed run cannot be mistaken for a certified one.
+CONTROLS_NOT_RUN = "not run"
+
+
+def write_evidence(out: Path, evidence: dict) -> Path:
+    """Everything the run measured, as a file, callable more than once per run."""
+    path = out / EVIDENCE_NAME
+    path.write_text(json.dumps(evidence, indent=2) + "\n")
+    return path
 
 
 def load_panel(path: Path, drop_columns: tuple[str, ...] = ()) -> np.ndarray:
@@ -225,8 +277,6 @@ def cell_seed(base: int, label: str, k: int, kind: str) -> int:
 
 def _cell(task: tuple) -> dict:
     """One (panel, k, null) cell: ``replicates`` null draws, no real statistic."""
-    from engagement_kernel.engagement.selection import cross_algorithm_statistic
-
     label, path, drop_columns, k, kind, replicates, seed, n_seeds = task
     values = load_panel(Path(path), tuple(drop_columns))
     rng = np.random.default_rng(seed)
@@ -267,8 +317,6 @@ def summarise(aris: list[float], quantile: float) -> dict:
 
 def positive_control(bars: dict[int, float], *, n_seeds: int, seed: int) -> dict:
     """A statistic that cannot see real structure cannot calibrate a bar."""
-    from engagement_kernel.engagement.selection import cross_algorithm_statistic
-
     k = min(bars)
     rng = np.random.default_rng(seed)
     centres = np.eye(k) * 10.0
@@ -343,8 +391,6 @@ def render_bars_toml(
     scalar: float | None,
 ) -> str:
     """A gates-file fragment: paste it into your gates file, or use it as one."""
-    from engagement_kernel.engagement.gate_config import GATE_CONFIG_VERSION
-
     described = ", ".join(
         f"{label} ({shapes[label][0]} rows x {shapes[label][1]} features)" for label, _ in panels
     )
@@ -542,36 +588,6 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(f"  spread across k is {spread:.4f}: adopt the per-k table")
 
-    print("\ncontrols")
-    positive = positive_control(bars, n_seeds=args.seeds, seed=args.rng_seed)
-    print(f"  positive  {'PASS' if positive['passed'] else 'FAIL'}  {positive['detail']}")
-    negative = negative_control(
-        bars,
-        panels,
-        drop_columns,
-        replicates=args.holdout_replicates or args.replicates,
-        n_seeds=args.seeds,
-        jobs=args.jobs,
-        seed=args.rng_seed + HOLDOUT_SEED_OFFSET,
-    )
-    print(f"  negative  {'PASS' if negative['passed'] else 'FAIL'}  {negative['detail']}")
-    if not (positive["passed"] and negative["passed"]):
-        print(
-            "\na control failed, so no bar is emitted. A bar from an uncontrolled "
-            "derivation is the same kind of number as the one it would replace.",
-            file=sys.stderr,
-        )
-        return 4
-
-    fragment = render_bars_toml(
-        bars,
-        governing=args.null,
-        quantile=args.quantile,
-        replicates=args.replicates,
-        panels=panels,
-        shapes=shapes,
-        scalar=scalar,
-    )
     evidence = {
         "tool": "tools/derive_cross_algorithm_bars.py",
         "governing_null": args.null,
@@ -590,18 +606,69 @@ def main(argv: list[str] | None = None) -> int:
         "null_distributions": {
             kind: {str(k): summarise(pooled[kind][k], args.quantile) for k in ks} for kind in NULLS
         },
-        "controls": {"positive": positive, "negative_holdout": negative},
+        "controls": {"status": CONTROLS_NOT_RUN},
     }
 
-    if args.out is None:
+    # Written *before* the controls run, and rewritten after with their verdict.
+    #
+    # A failed control refuses to emit a bar, and should: an uncontrolled bar is the
+    # same kind of number as the inherited one it would replace. But the null
+    # distributions behind it cost the entire run to measure and are worth the same
+    # whether the controls pass or not. Writing them first means a refused run -- or
+    # one killed partway through the controls -- leaves something to read instead of
+    # nothing. Only the gates fragment waits for the verdict.
+    out: Path | None = None
+    if args.out is not None:
+        out = Path(args.out)
+        out.mkdir(parents=True, exist_ok=True)
+        print(f"\nwrote {write_evidence(out, evidence)} (measurements; controls not yet run)")
+
+    print("\ncontrols")
+    positive = positive_control(bars, n_seeds=args.seeds, seed=args.rng_seed)
+    print(f"  positive  {'PASS' if positive['passed'] else 'FAIL'}  {positive['detail']}")
+    negative = negative_control(
+        bars,
+        panels,
+        drop_columns,
+        replicates=args.holdout_replicates or args.replicates,
+        n_seeds=args.seeds,
+        jobs=args.jobs,
+        seed=args.rng_seed + HOLDOUT_SEED_OFFSET,
+    )
+    print(f"  negative  {'PASS' if negative['passed'] else 'FAIL'}  {negative['detail']}")
+    passed = bool(positive["passed"] and negative["passed"])
+    evidence["controls"] = {
+        "status": "passed" if passed else "failed",
+        "positive": positive,
+        "negative_holdout": negative,
+    }
+    if out is not None:
+        write_evidence(out, evidence)
+    if not passed:
+        print(
+            "\na control failed, so no bar is emitted. A bar from an uncontrolled "
+            "derivation is the same kind of number as the one it would replace.",
+            file=sys.stderr,
+        )
+        if out is not None:
+            print(f"what the run measured is in {out / EVIDENCE_NAME}", file=sys.stderr)
+        return 4
+
+    fragment = render_bars_toml(
+        bars,
+        governing=args.null,
+        quantile=args.quantile,
+        replicates=args.replicates,
+        panels=panels,
+        shapes=shapes,
+        scalar=scalar,
+    )
+    if out is None:
         print("\n" + fragment)
         return 0
-    out = Path(args.out)
-    out.mkdir(parents=True, exist_ok=True)
-    (out / "cross_algorithm_bars.toml").write_text(fragment)
-    (out / "derivation_evidence.json").write_text(json.dumps(evidence, indent=2) + "\n")
-    print(f"\nwrote {out / 'cross_algorithm_bars.toml'}")
-    print(f"wrote {out / 'derivation_evidence.json'}")
+    (out / BARS_NAME).write_text(fragment)
+    print(f"\nwrote {out / BARS_NAME}")
+    print(f"wrote {out / EVIDENCE_NAME}")
     return 0
 
 
